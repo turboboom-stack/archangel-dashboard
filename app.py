@@ -412,5 +412,16 @@ def generate_summary():
     return jsonify({"ok": True, "summary": text})
 
 
+@app.route("/api/debug/gsc")
+def debug_gsc():
+    try:
+        from connectors.gsc_connector import _fetch_live
+        queries, summary = _fetch_live()
+        return jsonify({"ok": True, "queries": len(queries), "summary": summary})
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
