@@ -18,42 +18,42 @@ def _refresh_all(app):
     import engines.action_items as ai
 
     logger.info("Cache refresh started")
-    with app.app_context():
-        try:
-            wf.fetch(app)
-            logger.info("Webflow: refreshed")
-        except Exception as e:
-            logger.error("Webflow refresh error: %s", e)
+    try:
+        wf.fetch(app)
+        logger.info("Webflow: refreshed")
+    except Exception as e:
+        logger.error("Webflow refresh error: %s", e)
 
-        try:
-            gmb.fetch(app)
-            logger.info("GMB: refreshed")
-        except Exception as e:
-            logger.error("GMB refresh error: %s", e)
+    try:
+        gmb.fetch(app)
+        logger.info("GMB: refreshed")
+    except Exception as e:
+        logger.error("GMB refresh error: %s", e)
 
-        try:
-            gsc.fetch(app)
-            logger.info("GSC: refreshed")
-        except Exception as e:
-            logger.error("GSC refresh error: %s", e)
+    try:
+        gsc.fetch(app)
+        logger.info("GSC: refreshed")
+    except Exception as e:
+        logger.error("GSC refresh error: %s", e)
 
-        try:
-            ga4.fetch(app)
-            logger.info("GA4: refreshed")
-        except Exception as e:
-            logger.error("GA4 refresh error: %s", e)
+    try:
+        ga4.fetch(app)
+        logger.info("GA4: refreshed")
+    except Exception as e:
+        logger.error("GA4 refresh error: %s", e)
 
-        try:
-            clio.fetch(app)
-            logger.info("Clio: refreshed")
-        except Exception as e:
-            logger.error("Clio refresh error: %s", e)
+    try:
+        clio.fetch(app)
+        logger.info("Clio: refreshed")
+    except Exception as e:
+        logger.error("Clio refresh error: %s", e)
 
-        try:
+    try:
+        with app.app_context():
             count = ai.run_all()
-            logger.info("Action items: %d generated", count)
-        except Exception as e:
-            logger.error("Action items error: %s", e)
+        logger.info("Action items: %d generated", count)
+    except Exception as e:
+        logger.error("Action items error: %s", e)
 
     logger.info("Cache refresh complete")
 

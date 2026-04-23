@@ -11,14 +11,17 @@ function showToast(msg, isError = false) {
 }
 
 function refreshAll(btn) {
-  if (btn) btn.disabled = true;
+  if (btn) { btn.disabled = true; btn.textContent = 'Refreshing…'; }
   fetch('/api/refresh/all', { method: 'POST' })
     .then(r => r.json())
     .then(d => {
-      showToast('Refresh started — data will update in the background');
-      setTimeout(() => { if (btn) btn.disabled = false; }, 3000);
+      showToast('Refreshing data — reloading in 8 seconds…');
+      setTimeout(() => location.reload(), 8000);
     })
-    .catch(() => { showToast('Refresh failed', true); if (btn) btn.disabled = false; });
+    .catch(() => {
+      showToast('Refresh failed', true);
+      if (btn) { btn.disabled = false; btn.textContent = 'Refresh All'; }
+    });
 }
 
 function refreshSource(source) {
