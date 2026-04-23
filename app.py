@@ -16,16 +16,20 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
-    # Seed initial stub data on first run
-    from connectors import gmb_connector, gsc_connector, ga4_connector
     from sqlalchemy import select
     from models import GmbInsight, GscQuery, Ga4Summary
-    if not db.session.execute(select(GmbInsight).limit(1)).first():
-        gmb_connector.fetch(app)
-    if not db.session.execute(select(GscQuery).limit(1)).first():
-        gsc_connector.fetch(app)
-    if not db.session.execute(select(Ga4Summary).limit(1)).first():
-        ga4_connector.fetch(app)
+    needs_gmb = not db.session.execute(select(GmbInsight).limit(1)).first()
+    needs_gsc = not db.session.execute(select(GscQuery).limit(1)).first()
+    needs_ga4 = not db.session.execute(select(Ga4Summary).limit(1)).first()
+
+# Seed outside the context so each connector gets its own clean session
+from connectors import gmb_connector, gsc_connector, ga4_connector
+if needs_gmb:
+    gmb_connector.fetch(app)
+if needs_gsc:
+    gsc_connector.fetch(app)
+if needs_ga4:
+    ga4_connector.fetch(app)
 
 # Start background scheduler
 from engines import cache_manager
