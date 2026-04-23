@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+{% block title %}Overview — Archangel Command Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="mb-0 text-warning fw-bold">{{ month_name }} {{ today.year }} — Command Center</h4>
+    <small class="text-muted">North star: 30 bookings/month by June 2026</small>
+  </div>
+  <div class="text-end">
+    <span class="text-muted small">{{ today.strftime('%B %d, %Y') }}</span>
+  </div>
+</div>
+
+<!-- Goal Progress -->
+<div class="card bg-black border-warning mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0 text-warning">{{ month_name }} Booking Goal</h6>
+      <span class="fw-bold">{{ bookings_count }} / {{ target.bookings }}</span>
+    </div>
+    {% set pct = [(bookings_count / target.bookings * 100)|int, 100]|min %}
+    <div class="progress" style="height: 12px; background:#333;">
+      <div class="progress-bar {% if pct >= 80 %}bg-success{% elif pct >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+           style="width: {{ pct }}%"></div>
+    </div>
+    <div class="d-flex justify-content-between mt-1">
+      <small class="text-muted">{{ pct }}% of goal</small>
+      <small class="text-muted">Target CPA: <${{ target.cpa_max }}</small>
+    </div>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+
+  <!-- Bookings -->
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card bg-gray-900 border-secondary h-100">
+      <div class="card-body text-center p-3">
+        <div class="text-muted small mb-1"><i class="bi bi-calendar-check me-1"></i>Bookings</div>
+        <div class="display-6 fw-bold {% if bookings_count >= target.bookings %}text-success{% elif bookings_count >= target.bookings * 0.6 %}text-warning{% else %}text-danger{% endif %}">
+          {{ bookings_count }}
+        </div>
+        <div class="text-muted small">of {{ target.bookings }} goal</div>
+        {% if clio and clio.status == 'ok' %}
+        <div class="text-muted text-xs">{{ clio.bookings_this_month }} from Clio</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Matters (Clio Manage) -->
+  {% if clio and clio.status == 'ok' %}
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card bg-gray-900 border-secondary h-100">
+      <div class="card-body text-center p-3">
+        <div class="text-muted small mb-1"><i class="bi bi-briefcase me-1"></i>Active Matters</div>
+        <div class="display-6 fw-bold text-info">{{ clio.active_matters }}</div>
+        <div class="text-muted small">Clio Manage</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Revenue 30d -->
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card bg-gray-900 border-secondary h-100">
+      <div class="card-body text-center p-3">
+        <div class="text-muted small mb-1"><i class="bi bi-currency-dollar me-1"></i>Billed (30d)</div>
+        <div class="display-6 fw-bold text-success">${{ '{:,.0f}'.format(clio.revenue_30d) }}</div>
+        <div class="text-muted small">Clio Manage</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- CPA -->
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card bg-gray-900 border-secondary h-100">
+      <div class="card-body text-center p-3">
+        <div class="text-muted small mb-1"><i class="bi bi-currency-dollar me-1"></i>Ads CPA</div>
+        {% if latest_snap %}
+          <div class="display-6 fw-bold {% if latest_snap.cpa <= target.cpa_max %}text-success{% elif latest_snap.cpa <= target.cpa_max * 1.2 %}text-warning{% else %}text-danger{% endif %}">
+            ${{ latest_snap.cpa|int }}
+          </div>
+          <div class="text-muted small">target <${{ target.cpa_max }}</div>
+        {% else %}
+          <div class="display-6 fw-bold text-muted">—</div>
+          <div class="text-muted small">no data</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- GMB SD Calls -->
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card bg-gray-900 border-secondary h-100">
+      <div class="card-body text-center p-3">
+        <div class="text-muted small mb-1"><i class="bi bi-telephone me-1"></i>GMB Calls
+          {% if is_stub.gmb %}<span class="badge bg-secondary ms-1" style="font-size:.6rem">stub</span>{% endif %}
+        </div>
+        {% if sd_gmb %}
+          <div class="display-6 fw-bold text-info">{{ sd_gmb.calls }}</div>
+          <div class="text-muted small">SD (28d)</div>
+        {% else %}
+          <div class="display-6 fw-bold text-muted">—</div>
+          <div class="text-muted small">no data</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Blog Posts This Month -->
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card bg-gray-900 border-secondary h-100">
+      <div class="card-body text-center p-3">
+        <div class="text-muted small mb-1"><i class="bi bi-file-earmark-text me-1"></i>Posts</div>
+        <div class="display-6 fw-bold {% if posts_this_month >= 4 %}text-success{% elif posts_this_month >= 2 %}text-warning{% else %}text-danger{% endif %}">
+          {{ posts_this_month }}
+        </div>
+        <div class="text-muted small">this month</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GSC Top Position -->
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card bg-gray-900 border-secondary h-100">
+      <div class="card-body text-center p-3">
+        <div class="text-muted small mb-1"><i class="bi bi-search me-1"></i>Top Rank
+          {% if is_stub.gsc %}<span class="badge bg-secondary ms-1" style="font-size:.6rem">stub</span>{% endif %}
+        </div>
+        {% if gsc_summary %}
+          <div class="display-6 fw-bold text-info">#{{ gsc_summary.avg_position|int }}</div>
+          <div class="text-muted small">avg position</div>
+        {% else %}
+          <div class="display-6 fw-bold text-muted">—</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Ad Spend -->
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card bg-gray-900 border-secondary h-100">
+      <div class="card-body text-center p-3">
+        <div class="text-muted small mb-1"><i class="bi bi-cash-stack me-1"></i>Ad Spend</div>
+        {% if latest_snap %}
+          <div class="display-6 fw-bold text-light">${{ latest_snap.total_spend|int }}</div>
+          <div class="text-muted small">last upload</div>
+        {% else %}
+          <div class="display-6 fw-bold text-muted">—</div>
+          <div class="text-muted small">no data</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- GA4 Snapshot -->
+{% if ga4 %}
+<div class="card bg-dark border-secondary mb-4">
+  <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+    <h6 class="mb-0"><i class="bi bi-graph-up-arrow text-warning me-2"></i>Site Analytics — Last 7 Days</h6>
+    <small class="text-muted">GA4 · refreshed {{ ga4.refreshed_at.strftime('%b %d, %H:%M') if ga4.refreshed_at else '—' }}</small>
+  </div>
+  <div class="card-body">
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-md-3 text-center">
+        <div class="text-muted small mb-1">Sessions</div>
+        <div class="fs-4 fw-bold">{{ ga4.sessions }}</div>
+      </div>
+      <div class="col-6 col-md-3 text-center">
+        <div class="text-muted small mb-1">Active Users</div>
+        <div class="fs-4 fw-bold">{{ ga4.active_users }}</div>
+        <div class="text-muted small">{{ ga4.new_users }} new</div>
+      </div>
+      <div class="col-6 col-md-3 text-center">
+        <div class="text-muted small mb-1">Avg Session</div>
+        <div class="fs-4 fw-bold">{{ (ga4.avg_session_duration // 60)|int }}m {{ (ga4.avg_session_duration % 60)|int }}s</div>
+      </div>
+      <div class="col-6 col-md-3 text-center">
+        <div class="text-muted small mb-1">Bounce Rate</div>
+        <div class="fs-4 fw-bold {% if ga4.bounce_rate > 70 %}text-danger{% elif ga4.bounce_rate > 50 %}text-warning{% else %}text-success{% endif %}">
+          {{ ga4.bounce_rate }}%
+        </div>
+      </div>
+    </div>
+
+    <!-- Conversion Events -->
+    <div class="row g-3 mb-3">
+      {% for event, count in ga4.conversions.items() %}
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="bg-black rounded p-2 text-center">
+          <div class="text-muted small mb-1">{{ event | replace('_', ' ') | title }}</div>
+          <div class="fs-5 fw-bold {% if count > 0 %}text-success{% else %}text-muted{% endif %}">{{ count }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Traffic Channels + Top Pages -->
+    <div class="row g-3">
+      <div class="col-md-6">
+        <p class="small text-muted fw-bold mb-2">Traffic Channels</p>
+        {% for channel, sessions in ga4.channels.items() %}
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="small">{{ channel }}</span>
+          <div class="d-flex align-items-center gap-2">
+            <div class="progress flex-grow-1" style="width:80px; height:6px; background:#333;">
+              <div class="progress-bar bg-warning"
+                   style="width:{{ [(sessions / ga4.sessions * 100)|int, 100]|min }}%"></div>
+            </div>
+            <span class="small text-muted">{{ sessions }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="col-md-6">
+        <p class="small text-muted fw-bold mb-2">Top Landing Pages</p>
+        {% for page in ga4.top_pages[:6] %}
+        <div class="d-flex justify-content-between mb-1">
+          <span class="small text-truncate" style="max-width:65%">{{ page.page }}</span>
+          <span class="small text-muted">{{ page.sessions }} sess · {{ page.bounce }}% bounce</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Action Items -->
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card bg-black border-secondary">
+      <div class="card-header d-flex justify-content-between align-items-center border-secondary">
+        <h6 class="mb-0"><i class="bi bi-lightning-fill text-warning me-2"></i>Action Items</h6>
+        <button class="btn btn-sm btn-outline-secondary" onclick="refreshActionItems()">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+      <div class="card-body p-0" id="actionItemsList">
+        {% if action_items %}
+          {% for item in action_items %}
+            <div class="d-flex align-items-start gap-3 p-3 border-bottom border-secondary action-item" id="ai-{{ item.id }}">
+              <div class="mt-1">
+                {% if item.severity == 'critical' %}
+                  <span class="badge bg-danger">!</span>
+                {% elif item.severity == 'warning' %}
+                  <span class="badge bg-warning text-dark">~</span>
+                {% else %}
+                  <span class="badge bg-info text-dark">→</span>
+                {% endif %}
+              </div>
+              <div class="flex-grow-1">
+                <div class="small text-muted mb-1">
+                  <span class="badge bg-secondary me-1">{{ item.category }}</span>
+                  {{ item.severity|upper }}
+                </div>
+                <div class="small">{{ item.message }}</div>
+                {% if item.cta_text %}
+                  <a href="{{ item.cta_url }}" class="btn btn-sm btn-outline-secondary mt-2">{{ item.cta_text }}</a>
+                {% endif %}
+              </div>
+              <button class="btn btn-sm btn-link text-muted p-0 mt-1" onclick="dismissItem({{ item.id }})" title="Dismiss">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="p-4 text-center text-muted">
+            <i class="bi bi-check-circle-fill text-success fs-3 mb-2 d-block"></i>
+            No action items — all good!
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Source Status -->
+  <div class="col-lg-4">
+    <div class="card bg-black border-secondary">
+      <div class="card-header border-secondary">
+        <h6 class="mb-0"><i class="bi bi-hdd-network me-2 text-warning"></i>Data Sources</h6>
+      </div>
+      <div class="card-body p-0">
+        {% for key, src in sources.items() %}
+          <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom border-secondary">
+            <span class="small">{{ key|title }}</span>
+            <div class="text-end">
+              {% if src.status == 'ok' %}
+                <span class="badge bg-success">live</span>
+              {% elif src.status == 'stubbed' %}
+                <span class="badge bg-secondary">stub</span>
+              {% elif src.status == 'error' %}
+                <span class="badge bg-danger" title="{{ src.error_msg }}">error</span>
+              {% else %}
+                <span class="badge bg-dark border border-secondary">—</span>
+              {% endif %}
+              {% if src.last_refreshed %}
+                <div class="text-muted" style="font-size:.65rem">{{ src.last_refreshed.strftime('%m/%d %H:%M') }}</div>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="card bg-black border-secondary mt-3">
+      <div class="card-header border-secondary">
+        <h6 class="mb-0"><i class="bi bi-box-arrow-up-right me-2 text-warning"></i>Quick Links</h6>
+      </div>
+      <div class="card-body p-2">
+        <a href="https://ads.google.com" target="_blank" class="btn btn-sm btn-outline-secondary w-100 mb-1 text-start">
+          <i class="bi bi-google me-2"></i>Google Ads
+        </a>
+        <a href="https://business.google.com" target="_blank" class="btn btn-sm btn-outline-secondary w-100 mb-1 text-start">
+          <i class="bi bi-geo-alt me-2"></i>Google Business
+        </a>
+        <a href="https://webflow.com/dashboard" target="_blank" class="btn btn-sm btn-outline-secondary w-100 mb-1 text-start">
+          <i class="bi bi-box me-2"></i>Webflow CMS
+        </a>
+        <a href="https://app.clio.com" target="_blank" class="btn btn-sm btn-outline-secondary w-100 text-start">
+          <i class="bi bi-briefcase me-2"></i>Clio Grow
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

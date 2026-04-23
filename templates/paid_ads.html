@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% block title %}Paid Ads — Archangel Command Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0 text-warning fw-bold"><i class="bi bi-google me-2"></i>Google Ads Performance</h4>
+  <div>
+    {% if meta.last_refreshed %}
+      <small class="text-muted me-3">Last upload: {{ meta.last_refreshed.strftime('%b %d, %Y') }}</small>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Upload Panel -->
+<div class="card bg-black border-warning mb-4">
+  <div class="card-body">
+    <h6 class="text-warning mb-3"><i class="bi bi-upload me-2"></i>Upload Report</h6>
+    <p class="text-muted small mb-3">
+      Export a keyword or campaign CSV from Google Ads, or save the weekly performance email as HTML and upload it here. The date range is read from the file automatically.
+    </p>
+    <div id="uploadZone" class="border border-secondary rounded p-4 text-center" style="cursor:pointer; border-style:dashed!important;"
+         onclick="document.getElementById('fileInput').click()"
+         ondragover="event.preventDefault(); this.classList.add('border-warning');"
+         ondragleave="this.classList.remove('border-warning');"
+         ondrop="handleDrop(event)">
+      <i class="bi bi-file-earmark-arrow-up fs-2 text-muted mb-2 d-block"></i>
+      <span class="text-muted">Drop CSV or HTML file here, or click to browse</span>
+    </div>
+    <input type="file" id="fileInput" accept=".csv,.html,.htm" class="d-none" onchange="uploadFile(this.files[0])">
+    <div id="uploadStatus" class="mt-2 small"></div>
+  </div>
+</div>
+
+{% if snapshots %}
+<!-- Summary Cards (latest period) -->
+{% set latest = snapshots[-1] %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h6 class="text-muted mb-0">
+    Latest period:
+    <span class="text-light">
+      {% if latest.period_start and latest.period_end %}
+        {{ latest.period_start.strftime('%b %-d') }} – {{ latest.period_end.strftime('%b %-d, %Y') }}
+      {% else %}
+        {{ latest.snapshot_date.strftime('%b %d, %Y') }}
+      {% endif %}
+    </span>
+  </h6>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3">
+      <div class="text-muted small mb-1">Spend</div>
+      <div class="h4 fw-bold text-light">${{ latest.total_spend|int }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3">
+      <div class="text-muted small mb-1">Clicks</div>
+      <div class="h4 fw-bold text-info">{{ latest.total_clicks }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3">
+      <div class="text-muted small mb-1">Conversions</div>
+      <div class="h4 fw-bold text-success">{{ latest.total_conversions|round(1) }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3">
+      <div class="text-muted small mb-1">CPA</div>
+      <div class="h4 fw-bold {% if latest.cpa <= 150 %}text-success{% elif latest.cpa <= 180 %}text-warning{% else %}text-danger{% endif %}">
+        ${{ latest.cpa|int }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Date Range Filter -->
+<div class="card bg-black border-secondary mb-4">
+  <div class="card-body py-2">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="text-muted small me-1">Filter:</span>
+      <button type="button" class="btn btn-sm btn-outline-secondary range-preset" onclick="setPreset(7)">7d</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary range-preset" onclick="setPreset(14)">14d</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary range-preset" onclick="setPreset(30)">30d</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary range-preset" onclick="setPreset(60)">60d</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary range-preset" onclick="setPreset(90)">90d</button>
+      <span class="text-muted small mx-1">|</span>
+      <div class="d-flex align-items-center gap-2">
+        <label for="filterFrom" class="text-muted small mb-0">From</label>
+        <input type="date" id="filterFrom" title="Filter from date" class="form-control form-control-sm bg-dark text-light border-secondary filter-date-input">
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <label for="filterTo" class="text-muted small mb-0">To</label>
+        <input type="date" id="filterTo" title="Filter to date" class="form-control form-control-sm bg-dark text-light border-secondary filter-date-input">
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearFilter()">All</button>
+      <span id="filterCount" class="text-muted small ms-1"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-4 mb-4">
+  <div class="col-md-6">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-header border-secondary"><h6 class="mb-0">Spend & Conversions</h6></div>
+      <div class="card-body">
+        <canvas id="spendChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-header border-secondary"><h6 class="mb-0">CPA Trend</h6></div>
+      <div class="card-body">
+        <canvas id="cpaChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Top Keywords -->
+{% if latest_keywords %}
+<div class="card bg-black border-secondary mb-4">
+  <div class="card-header border-secondary">
+    <h6 class="mb-0"><i class="bi bi-key me-2 text-warning"></i>Top Campaigns / Keywords (Latest Period)</h6>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover table-sm mb-0">
+      <thead class="table-secondary text-dark">
+        <tr>
+          <th>Keyword / Campaign</th>
+          <th>Campaign</th>
+          <th class="text-end">Clicks</th>
+          <th class="text-end">Conv.</th>
+          <th class="text-end">Cost</th>
+          <th class="text-end">CPA</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for kw in latest_keywords %}
+        <tr>
+          <td>{{ kw.keyword or '—' }}</td>
+          <td class="text-muted small">{{ kw.campaign or '—' }}</td>
+          <td class="text-end">{{ kw.clicks }}</td>
+          <td class="text-end">{{ kw.conversions|round(1) }}</td>
+          <td class="text-end">${{ kw.cost|round(2) }}</td>
+          <td class="text-end {% if kw.cpa > 150 %}text-danger{% elif kw.cpa > 0 %}text-success{% endif %}">
+            {% if kw.cpa > 0 %}${{ kw.cpa|int }}{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Upload History -->
+<div class="card bg-black border-secondary">
+  <div class="card-header border-secondary"><h6 class="mb-0">Upload History</h6></div>
+  <div class="table-responsive">
+    <table class="table table-dark table-sm mb-0">
+      <thead class="table-secondary text-dark">
+        <tr>
+          <th>Period</th>
+          <th class="text-end">Spend</th>
+          <th class="text-end">Clicks</th>
+          <th class="text-end">Conv.</th>
+          <th class="text-end">CPA</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for snap in snapshots|reverse %}
+        <tr>
+          <td>
+            {% if snap.period_start and snap.period_end %}
+              {{ snap.period_start.strftime('%b %-d') }} – {{ snap.period_end.strftime('%b %-d, %Y') }}
+            {% else %}
+              {{ snap.snapshot_date.strftime('%b %d, %Y') }}
+            {% endif %}
+          </td>
+          <td class="text-end">${{ snap.total_spend|int }}</td>
+          <td class="text-end">{{ snap.total_clicks }}</td>
+          <td class="text-end">{{ snap.total_conversions|round(1) }}</td>
+          <td class="text-end {% if snap.cpa > 150 %}text-danger{% elif snap.cpa > 0 %}text-success{% endif %}">
+            {% if snap.cpa > 0 %}${{ snap.cpa|int }}{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-upload fs-1 d-block mb-3"></i>
+  <h5>No Ads data yet</h5>
+  <p>Export a CSV or HTML report from Google Ads and upload it above.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// All snapshots from server — used for filtering
+const allSnapshots = [
+  {% for s in snapshots %}
+  {
+    "snapshot_date": {{ s.snapshot_date.isoformat() | tojson }},
+    "period_start":  {{ (s.period_start.isoformat() if s.period_start else None) | tojson }},
+    "period_end":    {{ (s.period_end.isoformat() if s.period_end else None) | tojson }},
+    "total_spend":       {{ s.total_spend }},
+    "total_conversions": {{ s.total_conversions }},
+    "cpa":               {{ s.cpa }}
+  }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+// Build period label for a snapshot object
+function periodLabel(s) {
+  if (s.period_start && s.period_end) {
+    const start = new Date(s.period_start + 'T00:00:00');
+    const end = new Date(s.period_end + 'T00:00:00');
+    const mo = d => d.toLocaleString('en-US', {month: 'short'});
+    return `${mo(start)} ${start.getDate()} – ${mo(end)} ${end.getDate()}`;
+  }
+  return s.snapshot_date;
+}
+
+let spendChart, cpaChart;
+
+function buildCharts(snaps) {
+  const labels = snaps.map(periodLabel);
+  const spendData = snaps.map(s => s.total_spend);
+  const convData  = snaps.map(s => s.total_conversions);
+  const cpaData   = snaps.map(s => s.cpa);
+
+  if (spendChart) spendChart.destroy();
+  if (cpaChart)   cpaChart.destroy();
+
+  if (snaps.length === 0) return;
+
+  spendChart = new Chart(document.getElementById('spendChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Spend ($)', data: spendData, borderColor: '#ffc107', tension: 0.3, yAxisID: 'y' },
+        { label: 'Conversions', data: convData, borderColor: '#20c997', tension: 0.3, yAxisID: 'y1' },
+      ]
+    },
+    options: { ...darkChartOptions(), scales: { y: darkAxis('$', 'left'), y1: darkAxis('conv', 'right') } }
+  });
+
+  cpaChart = new Chart(document.getElementById('cpaChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'CPA ($)', data: cpaData, borderColor: '#dc3545', tension: 0.3, fill: false },
+        { label: 'Target ($150)', data: snaps.map(() => 150), borderColor: '#28a745', borderDash: [5,5], pointRadius: 0 },
+      ]
+    },
+    options: { ...darkChartOptions(), scales: { y: darkAxis('$', 'left') } }
+  });
+}
+
+function applyFilter() {
+  const from = document.getElementById('filterFrom').value;
+  const to   = document.getElementById('filterTo').value;
+  let filtered = allSnapshots;
+  if (from) filtered = filtered.filter(s => (s.period_end || s.snapshot_date) >= from);
+  if (to)   filtered = filtered.filter(s => (s.period_start || s.snapshot_date) <= to);
+  buildCharts(filtered);
+  const count = document.getElementById('filterCount');
+  count.textContent = filtered.length < allSnapshots.length
+    ? `Showing ${filtered.length} of ${allSnapshots.length} periods`
+    : '';
+}
+
+function isoToday() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isoOffset(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+function setPreset(days) {
+  document.getElementById('filterFrom').value = isoOffset(days);
+  document.getElementById('filterTo').value   = isoToday();
+  document.querySelectorAll('.range-preset').forEach(b => b.classList.remove('btn-warning', 'text-dark'));
+  event.target.classList.add('btn-warning', 'text-dark');
+  applyFilter();
+}
+
+function clearFilter() {
+  document.getElementById('filterFrom').value = '';
+  document.getElementById('filterTo').value   = '';
+  document.querySelectorAll('.range-preset').forEach(b => b.classList.remove('btn-warning', 'text-dark'));
+  buildCharts(allSnapshots);
+  document.getElementById('filterCount').textContent = '';
+}
+
+document.getElementById('filterFrom').addEventListener('change', () => {
+  document.querySelectorAll('.range-preset').forEach(b => b.classList.remove('btn-warning', 'text-dark'));
+  applyFilter();
+});
+document.getElementById('filterTo').addEventListener('change', () => {
+  document.querySelectorAll('.range-preset').forEach(b => b.classList.remove('btn-warning', 'text-dark'));
+  applyFilter();
+});
+
+// Initial render
+buildCharts(allSnapshots);
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('border-warning');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFile(file);
+}
+
+function fmtDate(iso) {
+  if (!iso) return null;
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleString('en-US', {month: 'short', day: 'numeric'});
+}
+
+function uploadFile(file) {
+  if (!file) return;
+  const status = document.getElementById('uploadStatus');
+  status.innerHTML = '<span class="text-warning">Uploading...</span>';
+  const fd = new FormData();
+  fd.append('report_file', file);
+  fetch('/api/ads/upload', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        let periodStr = '';
+        if (data.period_start && data.period_end) {
+          periodStr = `${fmtDate(data.period_start)} – ${fmtDate(data.period_end)} · `;
+        }
+        status.innerHTML = `<span class="text-success">✓ Uploaded: ${periodStr}$${data.spend.toFixed(2)} spend · $${data.cpa.toFixed(2)} CPA</span>`;
+        setTimeout(() => location.reload(), 1800);
+      } else {
+        status.innerHTML = `<span class="text-danger">Error: ${data.error}</span>`;
+      }
+    })
+    .catch(e => { status.innerHTML = `<span class="text-danger">${e}</span>`; });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}SEO — Archangel Command Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0 text-warning fw-bold"><i class="bi bi-bar-chart-line me-2"></i>SEO & Rankings</h4>
+  <div class="d-flex align-items-center gap-2">
+    {% if is_stub %}
+      <span class="badge bg-secondary">Stub Data</span>
+    {% else %}
+      <span class="badge bg-success">Live GSC</span>
+    {% endif %}
+    <button class="btn btn-sm btn-outline-secondary" onclick="refreshSource('gsc')">
+      <i class="bi bi-arrow-clockwise"></i>
+    </button>
+  </div>
+</div>
+
+{% if is_stub %}
+<div class="alert alert-secondary border-secondary mb-4">
+  <i class="bi bi-info-circle me-2"></i>
+  Stub data shown. Set <code>STUBS["gsc"] = False</code> in config.py and add your GSC property to connect live Search Console data.
+</div>
+{% endif %}
+
+<!-- Summary Cards -->
+{% if summary %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3">
+      <div class="text-muted small mb-1">Total Clicks</div>
+      <div class="h4 fw-bold text-info">{{ summary.total_clicks }}</div>
+      <div class="text-muted small">28 days</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3">
+      <div class="text-muted small mb-1">Impressions</div>
+      <div class="h4 fw-bold text-light">{{ summary.total_impressions }}</div>
+      <div class="text-muted small">28 days</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3">
+      <div class="text-muted small mb-1">Avg Position</div>
+      <div class="h4 fw-bold {% if summary.avg_position <= 5 %}text-success{% elif summary.avg_position <= 15 %}text-warning{% else %}text-danger{% endif %}">
+        #{{ summary.avg_position|round(1) }}
+      </div>
+      <div class="text-muted small">overall</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3">
+      <div class="text-muted small mb-1">Blog Posts</div>
+      <div class="h4 fw-bold text-success">{{ blog_count }}</div>
+      <div class="text-muted small">published</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Opportunities callout -->
+{% set opportunities = queries | selectattr('impressions', 'gt', 100) | selectattr('position', 'gt', 10) | list %}
+{% if opportunities %}
+<div class="card bg-black border-warning mb-4">
+  <div class="card-header border-warning">
+    <h6 class="mb-0 text-warning"><i class="bi bi-lightning me-2"></i>Ranking Opportunities (>100 impressions, position >10)</h6>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-sm mb-0">
+      <thead class="table-secondary text-dark">
+        <tr><th>Query</th><th class="text-end">Impressions</th><th class="text-end">Clicks</th><th class="text-end">Position</th></tr>
+      </thead>
+      <tbody>
+        {% for q in opportunities[:5] %}
+        <tr class="table-warning-subtle">
+          <td>{{ q.query }}</td>
+          <td class="text-end">{{ q.impressions }}</td>
+          <td class="text-end">{{ q.clicks }}</td>
+          <td class="text-end text-danger fw-bold">#{{ q.position|round(1) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Full query table -->
+<div class="card bg-black border-secondary">
+  <div class="card-header border-secondary d-flex justify-content-between">
+    <h6 class="mb-0"><i class="bi bi-search me-2 text-warning"></i>Top Organic Queries</h6>
+    <small class="text-muted">
+      <span class="badge bg-success me-1">●</span>&lt;5
+      <span class="badge bg-warning text-dark ms-2 me-1">●</span>5–10
+      <span class="badge bg-danger ms-2 me-1">●</span>&gt;10
+    </small>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover table-sm mb-0">
+      <thead class="table-secondary text-dark">
+        <tr>
+          <th>Query</th>
+          <th class="text-end">Clicks</th>
+          <th class="text-end">Impressions</th>
+          <th class="text-end">CTR</th>
+          <th class="text-end">Position</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for q in queries %}
+        <tr>
+          <td>{{ q.query }}</td>
+          <td class="text-end">{{ q.clicks }}</td>
+          <td class="text-end">{{ q.impressions }}</td>
+          <td class="text-end">{{ (q.ctr * 100)|round(1) }}%</td>
+          <td class="text-end fw-bold
+            {% if q.position <= 5 %}text-success
+            {% elif q.position <= 10 %}text-warning
+            {% else %}text-danger{% endif %}">
+            #{{ q.position|round(1) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

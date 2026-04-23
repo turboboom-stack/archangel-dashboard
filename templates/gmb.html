@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}GMB — Archangel Command Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0 text-warning fw-bold"><i class="bi bi-geo-alt-fill me-2"></i>Google My Business</h4>
+  <div class="d-flex align-items-center gap-2">
+    {% if is_stub %}
+      <span class="badge bg-secondary">Stub Data</span>
+    {% else %}
+      <span class="badge bg-success">Live</span>
+    {% endif %}
+    {% if meta.last_refreshed %}
+      <small class="text-muted">Updated {{ meta.last_refreshed.strftime('%b %d, %H:%M') }}</small>
+    {% endif %}
+    <button class="btn btn-sm btn-outline-secondary" onclick="refreshSource('gmb')">
+      <i class="bi bi-arrow-clockwise"></i>
+    </button>
+  </div>
+</div>
+
+{% if is_stub %}
+<div class="alert alert-secondary border-secondary mb-4" role="alert">
+  <i class="bi bi-info-circle me-2"></i>
+  Showing stub data. To connect live GMB data, set <code>STUBS["gmb"] = False</code> in config.py after confirming OAuth is working.
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <!-- San Diego -->
+  <div class="col-md-6">
+    <div class="card bg-black border-warning h-100">
+      <div class="card-header border-warning d-flex justify-content-between">
+        <h5 class="mb-0 text-warning"><i class="bi bi-pin-map-fill me-2"></i>San Diego</h5>
+        <span class="badge bg-warning text-dark">Priority</span>
+      </div>
+      <div class="card-body">
+        {% if sd %}
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="p-3 bg-dark rounded text-center">
+                <div class="text-muted small mb-1"><i class="bi bi-telephone me-1"></i>Calls</div>
+                <div class="h3 fw-bold text-warning">{{ sd.calls }}</div>
+                <div class="text-muted" style="font-size:.7rem">28 days</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 bg-dark rounded text-center">
+                <div class="text-muted small mb-1"><i class="bi bi-cursor me-1"></i>Website Clicks</div>
+                <div class="h3 fw-bold text-info">{{ sd.website_clicks }}</div>
+                <div class="text-muted" style="font-size:.7rem">28 days</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 bg-dark rounded text-center">
+                <div class="text-muted small mb-1"><i class="bi bi-signpost me-1"></i>Directions</div>
+                <div class="h3 fw-bold text-light">{{ sd.direction_requests }}</div>
+                <div class="text-muted" style="font-size:.7rem">28 days</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 bg-dark rounded text-center">
+                <div class="text-muted small mb-1"><i class="bi bi-eye me-1"></i>Map Views</div>
+                <div class="h3 fw-bold text-light">{{ sd.map_views or '—' }}</div>
+                <div class="text-muted" style="font-size:.7rem">28 days</div>
+              </div>
+            </div>
+          </div>
+          <hr class="border-secondary">
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="small text-muted mb-1">Reviews</div>
+              <div class="fw-bold">
+                {{ sd.review_count }}
+                {% if sd.avg_rating > 0 %}
+                  <span class="text-warning ms-1">★ {{ sd.avg_rating }}</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="small text-muted mb-1">Last GMB Post</div>
+              <div class="fw-bold {% if sd.last_post_date %}
+                {% set days = (today - sd.last_post_date).days %}
+                {% if days <= 7 %}text-success{% elif days <= 14 %}text-warning{% else %}text-danger{% endif %}
+              {% endif %}">
+                {% if sd.last_post_date %}
+                  {% set days = (today - sd.last_post_date).days %}
+                  {{ days }}d ago
+                {% else %}
+                  Unknown
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div class="text-center text-muted py-4">No SD data available</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Apple Valley -->
+  <div class="col-md-6">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-header border-secondary">
+        <h5 class="mb-0"><i class="bi bi-pin-map me-2 text-info"></i>Apple Valley</h5>
+      </div>
+      <div class="card-body">
+        {% if av %}
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="p-3 bg-dark rounded text-center">
+                <div class="text-muted small mb-1"><i class="bi bi-telephone me-1"></i>Calls</div>
+                <div class="h3 fw-bold text-info">{{ av.calls }}</div>
+                <div class="text-muted" style="font-size:.7rem">28 days</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 bg-dark rounded text-center">
+                <div class="text-muted small mb-1"><i class="bi bi-cursor me-1"></i>Website Clicks</div>
+                <div class="h3 fw-bold text-info">{{ av.website_clicks }}</div>
+                <div class="text-muted" style="font-size:.7rem">28 days</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 bg-dark rounded text-center">
+                <div class="text-muted small mb-1"><i class="bi bi-signpost me-1"></i>Directions</div>
+                <div class="h3 fw-bold text-light">{{ av.direction_requests }}</div>
+                <div class="text-muted" style="font-size:.7rem">28 days</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 bg-dark rounded text-center">
+                <div class="text-muted small mb-1"><i class="bi bi-eye me-1"></i>Map Views</div>
+                <div class="h3 fw-bold text-light">{{ av.map_views or '—' }}</div>
+                <div class="text-muted" style="font-size:.7rem">28 days</div>
+              </div>
+            </div>
+          </div>
+          <hr class="border-secondary">
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="small text-muted mb-1">Reviews</div>
+              <div class="fw-bold">
+                {{ av.review_count }}
+                {% if av.avg_rating > 0 %}
+                  <span class="text-warning ms-1">★ {{ av.avg_rating }}</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="small text-muted mb-1">Last GMB Post</div>
+              <div class="fw-bold {% if av.last_post_date %}
+                {% set days = (today - av.last_post_date).days %}
+                {% if days <= 7 %}text-success{% elif days <= 14 %}text-warning{% else %}text-danger{% endif %}
+              {% endif %}">
+                {% if av.last_post_date %}
+                  {% set days = (today - av.last_post_date).days %}
+                  {{ days }}d ago
+                {% else %}
+                  Unknown
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div class="text-center text-muted py-4">No AV data available</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const today = new Date();
+</script>
+{% endblock %}

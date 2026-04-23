@@ -1,0 +1,24 @@
+# Secrets
+.env
+clio_token.json
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Database
+dashboard.db
+
+# Google OAuth (never commit — set GOOGLE_TOKEN_JSON env var on server)
+token.json
+credentials.json
+
+# macOS
+.DS_Store

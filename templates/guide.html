@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+{% block title %}How It Works — Archangel Command Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="mb-0 text-warning fw-bold"><i class="bi bi-book me-2"></i>How It Works</h4>
+    <small class="text-muted">A complete guide to the Archangel Command Center</small>
+  </div>
+</div>
+
+<!-- What is this -->
+<div class="card bg-black border-secondary mb-4">
+  <div class="card-body">
+    <h5 class="text-warning mb-3"><i class="bi bi-shield-fill-check me-2"></i>What Is This Dashboard?</h5>
+    <p class="text-light mb-2">
+      The Archangel Command Center is a central hub that tracks every marketing channel in one place — Google Ads, Google My Business, Search Console rankings, blog content, and competitor activity. It also surfaces prioritized action items so you always know what to focus on next.
+    </p>
+    <p class="text-muted mb-0 small">
+      <strong class="text-light">North star goal:</strong> 30+ new client bookings/month by June 2026, with San Diego as the priority location.
+    </p>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <!-- Automated -->
+  <div class="col-lg-6">
+    <div class="card bg-black border-success h-100">
+      <div class="card-header border-success">
+        <h5 class="mb-0 text-success"><i class="bi bi-robot me-2"></i>Runs Automatically</h5>
+        <small class="text-muted">No action needed for these</small>
+      </div>
+      <div class="card-body p-0">
+
+        <div class="px-3 py-3 border-bottom border-secondary">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="fw-bold small">Blog Publishing</span>
+            <span class="badge bg-success">Hourly</span>
+          </div>
+          <p class="text-muted small mb-1">
+            New blog posts go live automatically on their scheduled date. The scheduler checks every hour and publishes any post whose publish date has passed.
+          </p>
+          <p class="text-muted small mb-0"><i class="bi bi-gear me-1"></i>Run by: <code>webflow-blog-scheduler/scheduler.py</code> via cron</p>
+        </div>
+
+        <div class="px-3 py-3 border-bottom border-secondary">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="fw-bold small">Dashboard Data Refresh</span>
+            <span class="badge bg-success">Daily 6am</span>
+          </div>
+          <p class="text-muted small mb-1">
+            Search Console rankings and Webflow post counts sync automatically every morning. Data is cached locally so the dashboard loads instantly.
+          </p>
+          <p class="text-muted small mb-0"><i class="bi bi-gear me-1"></i>Run by: APScheduler background thread inside this app</p>
+        </div>
+
+        <div class="px-3 py-3 border-bottom border-secondary">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="fw-bold small">Competitor Keyword Monitoring</span>
+            <span class="badge bg-success">Weekly</span>
+          </div>
+          <p class="text-muted small mb-1">
+            A weekly report tracks competitor keyword usage across 15 tracked firms. New keywords and rising trends are surfaced in the Competitors tab.
+          </p>
+          <p class="text-muted small mb-0"><i class="bi bi-gear me-1"></i>Run by: <code>automations/competitor-monitor/monitor.py</code></p>
+        </div>
+
+        <div class="px-3 py-3 border-bottom border-secondary">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="fw-bold small">GMB Post Generator</span>
+            <span class="badge bg-success">Weekly Sun 7am</span>
+          </div>
+          <p class="text-muted small mb-1">
+            Every Sunday, Claude generates 4 weeks of Google My Business posts (Mon=SD, Wed=Both, Fri=AV) and writes them to a Google Sheet queue. Posts are spaced 2–3 days apart and rotate through topic types: educational, local/geo, urgency, and service highlights.
+          </p>
+          <p class="text-muted small mb-0"><i class="bi bi-gear me-1"></i>Run by: <code>automations/gmb-post-scheduler/post_generator.py</code> via launchd</p>
+        </div>
+
+        <div class="px-3 py-3 border-bottom border-secondary">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="fw-bold small">GMB Post Publisher</span>
+            <span class="badge bg-success">Daily 9am</span>
+          </div>
+          <p class="text-muted small mb-1">
+            Every morning the scheduler checks the Google Sheet queue and publishes any post due that day to the correct GMB profile (SD, AV, or both). Status is written back to the sheet automatically.
+          </p>
+          <p class="text-muted small mb-0"><i class="bi bi-gear me-1"></i>Run by: <code>automations/gmb-post-scheduler/scheduler.py</code> via launchd</p>
+        </div>
+
+        <div class="px-3 py-3 border-bottom border-secondary">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="fw-bold small">Google Ads Keyword Automation</span>
+            <span class="badge bg-success">Daily</span>
+          </div>
+          <p class="text-muted small mb-1">
+            Scripts running inside Google Ads automatically pause keywords with CPA &gt; $100 after 14 days and add negative keywords from poor search terms.
+          </p>
+          <p class="text-muted small mb-0">
+            <i class="bi bi-exclamation-triangle text-warning me-1"></i>
+            <span class="text-warning">Paused until conversion tracking is fully verified.</span>
+          </p>
+        </div>
+
+        <div class="px-3 py-3">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="fw-bold small">Action Items Engine</span>
+            <span class="badge bg-success">On refresh</span>
+          </div>
+          <p class="text-muted small mb-0">
+            Every time data refreshes, rules run automatically to generate the action items shown on the Overview tab — flagging high CPA, missing GMB posts, content gaps, and ranking opportunities.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual -->
+  <div class="col-lg-6">
+    <div class="card bg-black border-warning h-100">
+      <div class="card-header border-warning">
+        <h5 class="mb-0 text-warning"><i class="bi bi-hand-index me-2"></i>Requires Manual Action</h5>
+        <small class="text-muted">These need a human each time</small>
+      </div>
+      <div class="card-body p-0">
+
+        <div class="px-3 py-3 border-bottom border-secondary">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="fw-bold small">Log Client Bookings</span>
+            <span class="badge bg-warning text-dark">As they happen</span>
+          </div>
+          <p class="text-muted small mb-1">
+            When a client books a consultation in Clio Grow, log it in the <a href="/bookings" class="text-warning">Bookings tab</a>. Include location (SD or AV) and source (Google Ads, GMB, referral, etc.) to track what's driving conversions.
+          </p>
+          <p class="text-muted small mb-0"><i class="bi bi-lightbulb text-info me-1"></i>Future: Clio webhook will automate this</p>
+        </div>
+
+        <div class="px-3 py-3 border-bottom border-secondary">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="fw-bold small">Upload Google Ads Report</span>
+            <span class="badge bg-warning text-dark">Weekly</span>
+          </div>
+          <p class="text-muted small mb-1">
+            Export the weekly performance report from Google Ads (or forward the automated email as HTML) and upload it in the <a href="/paid-ads" class="text-warning">Paid Ads tab</a>. This populates spend, CPA, and keyword performance charts.
+          </p>
+          <p class="text-muted small mb-0">
+            <strong class="text-light">How to export:</strong> Google Ads → Reports → Predefined → Keyword → Download CSV
+          </p>
+        </div>
+
+        <div class="px-3 py-3 border-bottom border-secondary">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="fw-bold small">Generate New Blog Posts</span>
+            <span class="badge bg-warning text-dark">As needed</span>
+          </div>
+          <p class="text-muted small mb-1">
+            The content engine has 530 pending keywords ready. When the draft queue runs low (fewer than 8 scheduled), run a new batch.
+          </p>
+          <div class="bg-dark rounded p-2 mt-1">
+            <code class="small text-success">cd archangel-marketing/seo-content-engine</code><br>
+            <code class="small text-success">python3 engine.py generate "keyword here"</code><br>
+            <code class="small text-success">python3 engine.py publish --all</code><br>
+            <code class="small text-success">python3 engine.py schedule</code>
+          </div>
+        </div>
+
+        <div class="px-3 py-3">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="fw-bold small">Review & Act on Action Items</span>
+            <span class="badge bg-warning text-dark">Weekly</span>
+          </div>
+          <p class="text-muted small mb-0">
+            Check the <a href="/" class="text-warning">Overview tab</a> weekly. Critical items (red) need same-day attention. Warnings (yellow) should be resolved within the week. Opportunities (blue) can be batched.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab-by-tab guide -->
+<h5 class="text-warning mb-3"><i class="bi bi-layout-tabs me-2"></i>Tab Guide</h5>
+<div class="row g-3 mb-4">
+
+  <div class="col-md-6 col-lg-4">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-body">
+        <h6 class="text-warning"><i class="bi bi-speedometer2 me-2"></i>Overview</h6>
+        <p class="text-muted small mb-2">Your daily check-in. Shows KPI scorecards vs. monthly targets, a goal progress bar, and the top 5 action items across all channels.</p>
+        <div class="text-muted small"><strong class="text-light">Check:</strong> Daily</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-body">
+        <h6 class="text-warning"><i class="bi bi-google me-2"></i>Paid Ads</h6>
+        <p class="text-muted small mb-2">Google Ads spend, CPA, and keyword performance. Upload your weekly CSV or HTML report to keep this current. CPA target is &lt;$150 (April), dropping to &lt;$100 by June.</p>
+        <div class="text-muted small"><strong class="text-light">Check:</strong> After each upload</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-body">
+        <h6 class="text-warning"><i class="bi bi-geo-alt-fill me-2"></i>GMB</h6>
+        <p class="text-muted small mb-2">Live Google My Business metrics for both San Diego and Apple Valley: calls, website clicks, direction requests, and map views. Data pulled daily from the Business Profile Performance API.</p>
+        <div class="text-muted small"><strong class="text-light">Check:</strong> Weekly</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-body">
+        <h6 class="text-warning"><i class="bi bi-bar-chart-line me-2"></i>SEO & Rankings</h6>
+        <p class="text-muted small mb-2">Live Google Search Console data — top organic queries, click/impression counts, and average position. Queries with &gt;100 impressions ranking below #10 are highlighted as optimization opportunities.</p>
+        <div class="text-muted small"><strong class="text-light">Check:</strong> Weekly</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-body">
+        <h6 class="text-warning"><i class="bi bi-pencil-square me-2"></i>Content Pipeline</h6>
+        <p class="text-muted small mb-2">Tracks all 542 target keywords (pending → generated → published), shows the draft queue scheduled in Webflow, and lists all live blog posts. When fewer than 8 drafts remain, generate a new batch.</p>
+        <div class="text-muted small"><strong class="text-light">Check:</strong> When queue gets low</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-body">
+        <h6 class="text-warning"><i class="bi bi-binoculars me-2"></i>Competitors</h6>
+        <p class="text-muted small mb-2">Keywords being used by 15 tracked competitor firms, sourced from the SEO analyzer database and weekly diff reports. Content gaps (keywords competitors rank for that Archangel doesn't) feed directly into action items.</p>
+        <div class="text-muted small"><strong class="text-light">Check:</strong> Weekly</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Data sources status -->
+<h5 class="text-warning mb-3"><i class="bi bi-hdd-network me-2"></i>Data Sources & Connection Status</h5>
+<div class="table-responsive mb-4">
+  <table class="table table-dark table-sm">
+    <thead class="table-secondary text-dark">
+      <tr><th>Source</th><th>What It Provides</th><th>Status</th><th>How to Update</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="fw-bold">Google Search Console</td>
+        <td class="text-muted small">Organic keyword rankings, clicks, impressions</td>
+        <td><span class="badge bg-success">Live</span></td>
+        <td class="text-muted small">Auto-refreshes daily</td>
+      </tr>
+      <tr>
+        <td class="fw-bold">Webflow CMS</td>
+        <td class="text-muted small">Blog post publish status and schedule</td>
+        <td><span class="badge bg-success">Live</span></td>
+        <td class="text-muted small">Click "Sync Webflow" in Content tab</td>
+      </tr>
+      <tr>
+        <td class="fw-bold">Google My Business</td>
+        <td class="text-muted small">Calls, clicks, direction requests (SD + AV)</td>
+        <td><span class="badge bg-success">Live</span></td>
+        <td class="text-muted small">Auto-refreshes daily</td>
+      </tr>
+      <tr>
+        <td class="fw-bold">Google Ads</td>
+        <td class="text-muted small">Spend, CPA, keyword performance</td>
+        <td><span class="badge bg-warning text-dark">Manual Upload</span></td>
+        <td class="text-muted small">Upload CSV/HTML weekly in Paid Ads tab</td>
+      </tr>
+      <tr>
+        <td class="fw-bold">Competitor Keywords</td>
+        <td class="text-muted small">15 competitor firms, 370+ keywords tracked</td>
+        <td><span class="badge bg-success">Live</span></td>
+        <td class="text-muted small">Auto-updated weekly by monitor script</td>
+      </tr>
+      <tr>
+        <td class="fw-bold">Clio Grow Bookings</td>
+        <td class="text-muted small">Client consultation bookings</td>
+        <td><span class="badge bg-warning text-dark">Manual Entry</span></td>
+        <td class="text-muted small">Log each booking in the Bookings tab</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Automation status -->
+<div class="card bg-black border-secondary">
+  <div class="card-header border-secondary">
+    <h6 class="mb-0"><i class="bi bi-check2-circle me-2 text-success"></i>Completed Automations</h6>
+  </div>
+  <div class="card-body p-0">
+    <div class="px-3 py-3 border-bottom border-secondary d-flex gap-3 align-items-start">
+      <span class="badge bg-success mt-1">Live</span>
+      <div>
+        <div class="fw-bold small">GMB Post Generator + Publisher</div>
+        <div class="text-muted small">Claude generates 4 weeks of GMB posts every Sunday and writes them to a Google Sheet. The daily scheduler picks them up and publishes automatically — zero manual posting required.</div>
+      </div>
+    </div>
+    <div class="px-3 py-3 border-bottom border-secondary d-flex gap-3 align-items-start">
+      <span class="badge bg-success mt-1">Live</span>
+      <div>
+        <div class="fw-bold small">Live GMB Metrics</div>
+        <div class="text-muted small">Business Profile Performance API connected via OAuth. Calls, website clicks, and direction requests for SD and AV refresh daily.</div>
+      </div>
+    </div>
+    <div class="px-3 py-3 border-bottom border-secondary d-flex gap-3 align-items-start">
+      <span class="badge bg-success mt-1">Live</span>
+      <div>
+        <div class="fw-bold small">Live Search Console Rankings</div>
+        <div class="text-muted small">Google Search Console API connected. Top 50 organic queries with clicks, impressions, CTR, and position refresh daily.</div>
+      </div>
+    </div>
+    <div class="px-3 py-3 d-flex gap-3 align-items-start">
+      <span class="badge bg-info text-dark mt-1">Planned</span>
+      <div>
+        <div class="fw-bold small">Clio Webhook Tracker</div>
+        <div class="text-muted small">Will capture Clio Grow form submissions automatically and log bookings here in real time — eliminating manual entry in the Bookings tab.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

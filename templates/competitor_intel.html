@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Competitors — Archangel Command Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0 text-warning fw-bold"><i class="bi bi-binoculars me-2"></i>Competitor Intelligence</h4>
+  <div class="text-muted small">
+    {{ seo_data.stats.completed_businesses or 0 }} competitors analyzed •
+    {{ seo_data.stats.unique_keywords or 0 }} unique keywords tracked
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Latest report summary -->
+  <div class="col-lg-4">
+    {% if report_data.latest %}
+    <div class="card bg-black border-secondary mb-3">
+      <div class="card-header border-secondary">
+        <h6 class="mb-0"><i class="bi bi-calendar3 me-2 text-warning"></i>Latest Report</h6>
+      </div>
+      <div class="card-body">
+        <div class="small text-muted mb-1">Date</div>
+        <div class="mb-3 fw-bold">{{ report_data.latest.date }}</div>
+        <div class="row g-2 text-center">
+          <div class="col-6">
+            <div class="p-2 bg-dark rounded">
+              <div class="text-muted" style="font-size:.7rem">Competitors</div>
+              <div class="fw-bold text-warning">{{ report_data.latest.competitors_analyzed }}</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 bg-dark rounded">
+              <div class="text-muted" style="font-size:.7rem">Total Keywords</div>
+              <div class="fw-bold text-info">{{ report_data.latest.total_keywords }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New This Week -->
+    <div class="card bg-black border-secondary mb-3">
+      <div class="card-header border-secondary">
+        <h6 class="mb-0"><i class="bi bi-stars me-2 text-warning"></i>New This Week</h6>
+      </div>
+      <div class="card-body p-0">
+        {% if report_data.new_this_week %}
+          {% for kw in report_data.new_this_week[:10] %}
+          <div class="px-3 py-2 border-bottom border-secondary d-flex justify-content-between">
+            <span class="small">{{ kw.keyword if kw is mapping else kw }}</span>
+            {% if kw is mapping %}
+              <span class="badge bg-secondary">{{ kw.category }}</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-muted text-center py-3 small">No new keywords this week</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Report history -->
+    <div class="card bg-black border-secondary">
+      <div class="card-header border-secondary">
+        <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Report History</h6>
+      </div>
+      <div class="card-body p-0">
+        {% for r in report_data.reports | reverse %}
+        <div class="px-3 py-2 border-bottom border-secondary d-flex justify-content-between">
+          <span class="small">{{ r.date }}</span>
+          <span class="text-muted small">{{ r.total_keywords }} kws</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Top competitor keywords -->
+  <div class="col-lg-8">
+    <div class="card bg-black border-secondary mb-4">
+      <div class="card-header border-secondary">
+        <h6 class="mb-0"><i class="bi bi-trophy me-2 text-warning"></i>Top Competitor Keywords</h6>
+      </div>
+      <div class="table-responsive" style="max-height: 350px; overflow-y:auto;">
+        <table class="table table-dark table-hover table-sm mb-0">
+          <thead class="table-secondary text-dark sticky-top">
+            <tr><th>#</th><th>Keyword</th><th>Category</th><th class="text-end">Sites Using</th></tr>
+          </thead>
+          <tbody>
+            {% for kw in seo_data.aggregated %}
+            <tr>
+              <td class="text-muted">{{ loop.index }}</td>
+              <td class="small">{{ kw.keyword }}</td>
+              <td>
+                <span class="badge
+                  {% if kw.category == 'Probate' %}bg-danger
+                  {% elif kw.category == 'Trust Planning' %}bg-warning text-dark
+                  {% elif kw.category == 'Legal Services' %}bg-info text-dark
+                  {% elif kw.category == 'Asset Protection' %}bg-success
+                  {% else %}bg-secondary{% endif %}">
+                  {{ kw.category }}
+                </span>
+              </td>
+              <td class="text-end fw-bold">{{ kw.businesses }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Competitor list -->
+    {% if seo_data.businesses %}
+    <div class="card bg-black border-secondary">
+      <div class="card-header border-secondary">
+        <h6 class="mb-0"><i class="bi bi-people me-2 text-warning"></i>Tracked Competitors</h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-dark table-hover table-sm mb-0">
+          <thead class="table-secondary text-dark">
+            <tr><th>Name</th><th>Location</th><th>Status</th><th>Last Analyzed</th></tr>
+          </thead>
+          <tbody>
+            {% for biz in seo_data.businesses %}
+            <tr>
+              <td class="small">
+                {% if biz.website %}
+                  <a href="{{ biz.website }}" target="_blank" class="text-light text-decoration-none">
+                    {{ biz.name }} <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.65rem"></i>
+                  </a>
+                {% else %}
+                  {{ biz.name }}
+                {% endif %}
+              </td>
+              <td class="text-muted small">{{ biz.location or '—' }}</td>
+              <td>
+                <span class="badge {% if biz.status == 'completed' %}bg-success{% elif biz.status == 'analyzing' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                  {{ biz.status }}
+                </span>
+              </td>
+              <td class="text-muted small">{{ biz.last_analyzed or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,79 @@
+body {
+  font-size: 0.875rem;
+}
+
+#summaryText {
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+
+.instructions-pre {
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+
+.text-xs {
+  font-size: 0.7rem;
+}
+
+.bg-gray-900 {
+  background-color: #111 !important;
+}
+
+.card {
+  background-color: #111;
+}
+
+.table-dark {
+  --bs-table-bg: transparent;
+  --bs-table-hover-bg: rgba(255,255,255,0.05);
+}
+
+.table-secondary.text-dark {
+  --bs-table-bg: #2a2a2a;
+  color: #ccc !important;
+}
+
+.table-secondary.text-dark th {
+  color: #ccc !important;
+}
+
+.display-6 {
+  font-size: 1.75rem;
+}
+
+.progress {
+  border-radius: 6px;
+}
+
+.action-item:hover {
+  background: rgba(255, 193, 7, 0.04);
+}
+
+canvas {
+  max-height: 220px;
+}
+
+/* Scrollable tables */
+.table-responsive::-webkit-scrollbar {
+  height: 4px;
+}
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 2px;
+}
+
+/* Navbar active */
+.nav-link.active {
+  font-weight: 600;
+}
+
+/* Sticky table headers in scrollable containers */
+.sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #2a2a2a;
+}
+
+.filter-date-input { width: 160px; }
