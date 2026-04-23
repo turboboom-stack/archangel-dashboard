@@ -59,14 +59,15 @@ def _parse_date(s):
 
 
 def fetch(app):
-    meta = CacheMetadata.get("webflow")
     try:
         items = _fetch_all_items()
     except Exception as e:
-        meta.mark_error(str(e))
+        with app.app_context():
+            CacheMetadata.get("webflow").mark_error(str(e))
         return {"error": str(e)}
 
     with app.app_context():
+        meta = CacheMetadata.get("webflow")
         for item in items:
             fields = item.get("fieldData", {})
             cms_id = item.get("id")

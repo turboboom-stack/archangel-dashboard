@@ -76,9 +76,8 @@ def _fetch_live():
 
 
 def fetch(app):
-    meta = CacheMetadata.get("gsc")
-
     with app.app_context():
+        meta = CacheMetadata.get("gsc")
         if config.STUBS["gsc"]:
             queries = STUB_QUERIES
             total_clicks = sum(q["clicks"] for q in queries)

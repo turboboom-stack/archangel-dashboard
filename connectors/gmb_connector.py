@@ -93,10 +93,9 @@ def _fetch_live(location_key, location_id):
 
 
 def fetch(app):
-    meta = CacheMetadata.get("gmb")
-    location_map = {"SD": config.GMB_LOCATION_SD, "AV": config.GMB_LOCATION_AV}
-
     with app.app_context():
+        meta = CacheMetadata.get("gmb")
+        location_map = {"SD": config.GMB_LOCATION_SD, "AV": config.GMB_LOCATION_AV}
         for loc_key, loc_id in location_map.items():
             if config.STUBS["gmb"]:
                 d = STUB_DATA[loc_key]
