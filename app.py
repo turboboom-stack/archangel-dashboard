@@ -1,6 +1,7 @@
 """Archangel Command Center — main Flask application."""
 
 import os
+import re
 from datetime import datetime, date
 from flask import Flask, render_template, request, jsonify, flash
 from models import db, CacheMetadata, ClioBooking, ActionItem, AdRecommendation
@@ -475,7 +476,7 @@ def _normalize_phone(raw):
 
 @app.route("/api/lsa/upload", methods=["POST"])
 def upload_lsa():
-    import csv, io, re
+    import csv, io
 
     f = request.files.get("lsa_file")
     if not f:
@@ -485,27 +486,39 @@ def upload_lsa():
     reader = csv.DictReader(io.StringIO(content))
     headers = [h.strip().lower() for h in (reader.fieldnames or [])]
 
-    # Detect phone column — LSA exports use various names
+    fields = reader.fieldnames or []
+
+    # Detect phone column by name first, then fall back to sniffing column values
     phone_col = next(
-        (h for h in reader.fieldnames or []
-         if any(k in h.lower() for k in ["phone", "caller", "number", "tel"])),
+        (h for h in fields
+         if any(k in h.lower() for k in ["phone", "caller", "number", "tel", "customer"])),
         None,
     )
+    # If still not found, pick the first column whose first value looks like a phone number
+    if not phone_col:
+        rows_preview = list(reader)
+        for h in fields:
+            sample = next((r.get(h, "") for r in rows_preview if r.get(h, "").strip()), "")
+            if re.search(r"[\d\-\(\)\+]{7,}", sample):
+                phone_col = h
+                break
+        reader = iter(rows_preview)  # reset iteration
+
     lead_id_col = next(
-        (h for h in reader.fieldnames or []
+        (h for h in fields
          if any(k in h.lower() for k in ["lead id", "lead_id", "leadid", "id"])),
         None,
     )
     charged_col = next(
-        (h for h in reader.fieldnames or []
-         if any(k in h.lower() for k in ["charged", "billed", "status", "dispute"])),
+        (h for h in fields
+         if any(k in h.lower() for k in ["charge", "billed", "status", "dispute"])),
         None,
     )
 
     if not phone_col:
         return jsonify({
             "error": "Could not find a phone column",
-            "columns_found": reader.fieldnames,
+            "columns_found": fields,
         }), 422
 
     # Build phone → {lead_id, charged} map from the LSA sheet
@@ -517,7 +530,8 @@ def upload_lsa():
             continue
         lead_id = row.get(lead_id_col, "").strip() if lead_id_col else ""
         charged_raw = row.get(charged_col, "").strip().lower() if charged_col else ""
-        charged = charged_raw not in ("", "no", "false", "0", "disputed", "credited")
+        # Only "charged" (exact) counts as a billable lead — "not charged", "in review", etc. do not
+        charged = charged_raw == "charged"
         lsa_leads[norm] = {"lead_id": lead_id, "charged": charged, "raw_phone": raw}
 
     if not lsa_leads:
