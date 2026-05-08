@@ -38,7 +38,7 @@ Return only the JSON array, no other text."""
 def _call_claude(api_key, user_prompt):
     payload = {
         "model": MODEL,
-        "max_tokens": 1024,
+        "max_tokens": 4096,
         "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": user_prompt}],
     }
