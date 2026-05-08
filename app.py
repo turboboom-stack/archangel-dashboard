@@ -20,7 +20,13 @@ with app.app_context():
     from sqlalchemy import text
     with db.engine.connect() as _conn:
         _existing = {row[1] for row in _conn.execute(text("PRAGMA table_info(clio_bookings)"))}
-        for _col, _typedef in [("gclid", "VARCHAR(256)"), ("email", "VARCHAR(256)"), ("phone", "VARCHAR(64)")]:
+        for _col, _typedef in [
+            ("gclid",       "VARCHAR(256)"),
+            ("email",       "VARCHAR(256)"),
+            ("phone",       "VARCHAR(64)"),
+            ("lsa_lead_id", "VARCHAR(128)"),
+            ("lsa_charged", "BOOLEAN"),
+        ]:
             if _col not in _existing:
                 _conn.execute(text(f"ALTER TABLE clio_bookings ADD COLUMN {_col} {_typedef}"))
         _conn.commit()
@@ -418,6 +424,132 @@ def generate_summary():
     if err:
         return jsonify({"error": err}), 500
     return jsonify({"ok": True, "summary": text})
+
+
+@app.route("/api/bookings/backfill-phones", methods=["POST"])
+def backfill_phones():
+    from connectors.clio_connector import _paginate
+    import re
+
+    # Collect clio contact IDs that need a phone
+    missing = (
+        db.session.query(ClioBooking)
+        .filter(ClioBooking.clio_id.isnot(None), ClioBooking.phone.is_(None))
+        .all()
+    )
+    if not missing:
+        return jsonify({"ok": True, "updated": 0, "message": "All bookings already have phones"})
+
+    # Build a lookup: numeric_contact_id → booking row
+    id_map = {}
+    for b in missing:
+        if b.clio_id and b.clio_id.startswith("contact-"):
+            id_map[b.clio_id.replace("contact-", "")] = b
+
+    updated = 0
+    errors = []
+    for contact in _paginate("contacts", {
+        "fields": "id,primary_phone_number",
+        "order":  "id(desc)",
+        "limit":  200,
+    }):
+        cid = str(contact.get("id", ""))
+        if cid not in id_map:
+            continue
+        raw_phone = contact.get("primary_phone_number") or ""
+        if raw_phone:
+            id_map[cid].phone = raw_phone
+            updated += 1
+        if updated >= len(id_map):
+            break  # found all we needed
+
+    db.session.commit()
+    return jsonify({"ok": True, "updated": updated, "total_missing": len(missing)})
+
+
+def _normalize_phone(raw):
+    """Strip all non-digits, return last 10 digits (US numbers)."""
+    digits = re.sub(r"\D", "", str(raw or ""))
+    return digits[-10:] if len(digits) >= 10 else digits
+
+
+@app.route("/api/lsa/upload", methods=["POST"])
+def upload_lsa():
+    import csv, io, re
+
+    f = request.files.get("lsa_file")
+    if not f:
+        return jsonify({"error": "No file provided"}), 400
+
+    content = f.read().decode("utf-8-sig")  # strip BOM if present
+    reader = csv.DictReader(io.StringIO(content))
+    headers = [h.strip().lower() for h in (reader.fieldnames or [])]
+
+    # Detect phone column — LSA exports use various names
+    phone_col = next(
+        (h for h in reader.fieldnames or []
+         if any(k in h.lower() for k in ["phone", "caller", "number", "tel"])),
+        None,
+    )
+    lead_id_col = next(
+        (h for h in reader.fieldnames or []
+         if any(k in h.lower() for k in ["lead id", "lead_id", "leadid", "id"])),
+        None,
+    )
+    charged_col = next(
+        (h for h in reader.fieldnames or []
+         if any(k in h.lower() for k in ["charged", "billed", "status", "dispute"])),
+        None,
+    )
+
+    if not phone_col:
+        return jsonify({
+            "error": "Could not find a phone column",
+            "columns_found": reader.fieldnames,
+        }), 422
+
+    # Build phone → {lead_id, charged} map from the LSA sheet
+    lsa_leads = {}
+    for row in reader:
+        raw = row.get(phone_col, "")
+        norm = _normalize_phone(raw)
+        if not norm:
+            continue
+        lead_id = row.get(lead_id_col, "").strip() if lead_id_col else ""
+        charged_raw = row.get(charged_col, "").strip().lower() if charged_col else ""
+        charged = charged_raw not in ("", "no", "false", "0", "disputed", "credited")
+        lsa_leads[norm] = {"lead_id": lead_id, "charged": charged, "raw_phone": raw}
+
+    if not lsa_leads:
+        return jsonify({"error": "No valid phone numbers found in uploaded file"}), 422
+
+    # Match against bookings that have a phone number
+    bookings_with_phone = (
+        db.session.query(ClioBooking)
+        .filter(ClioBooking.phone.isnot(None))
+        .all()
+    )
+
+    matched, already_matched = 0, 0
+    for booking in bookings_with_phone:
+        norm = _normalize_phone(booking.phone)
+        if norm in lsa_leads:
+            if booking.lsa_lead_id:
+                already_matched += 1
+            else:
+                lead = lsa_leads[norm]
+                booking.lsa_lead_id = lead["lead_id"] or norm
+                booking.lsa_charged = lead["charged"]
+                matched += 1
+
+    db.session.commit()
+    return jsonify({
+        "ok": True,
+        "lsa_leads_in_file": len(lsa_leads),
+        "bookings_checked": len(bookings_with_phone),
+        "newly_matched": matched,
+        "already_matched": already_matched,
+    })
 
 
 @app.route("/webhook/clio", methods=["POST"])

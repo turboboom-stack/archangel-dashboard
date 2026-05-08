@@ -133,6 +133,8 @@ class ClioBooking(db.Model):
     gclid = db.Column(db.String(256), nullable=True)   # Google Click ID for offline conversion import
     email = db.Column(db.String(256), nullable=True)
     phone = db.Column(db.String(64), nullable=True)
+    lsa_lead_id = db.Column(db.String(128), nullable=True)   # Google LSA lead ID if matched
+    lsa_charged = db.Column(db.Boolean, nullable=True)       # whether LSA charged for this lead
 
 
 class AdRecommendation(db.Model):

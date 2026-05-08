@@ -123,6 +123,7 @@ canvas {
 .filter-date-input { width: 160px; }
 
 .contact-meta { font-size: .7rem; }
+.booking-progress { height: 12px; }
 
 /* Form controls */
 .form-control.bg-dark {

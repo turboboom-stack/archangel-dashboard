@@ -4,9 +4,17 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h4 class="mb-0 text-warning fw-bold"><i class="bi bi-calendar-check me-2"></i>Client Bookings</h4>
-  <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#addBookingModal">
-    <i class="bi bi-plus-lg me-1"></i>Log Booking
-  </button>
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="backfillPhones(this)" title="Pull phone numbers from Clio for all existing bookings">
+      <i class="bi bi-telephone me-1"></i>Backfill Phones
+    </button>
+    <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#lsaUploadModal" title="Match Google Local Services leads by phone number">
+      <i class="bi bi-upload me-1"></i>Match LSA Sheet
+    </button>
+    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#addBookingModal" title="Manually log a booking">
+      <i class="bi bi-plus-lg me-1"></i>Log Booking
+    </button>
+  </div>
 </div>
 
 <!-- Monthly Summary -->
@@ -17,9 +25,9 @@
       <span class="fw-bold">{{ count }} / {{ target.bookings }} bookings</span>
     </div>
     {% set pct = [(count / target.bookings * 100)|int, 100]|min %}
-    <div class="progress" style="height: 12px; background:#333;">
+    <div class="progress booking-progress">
       <div class="progress-bar {% if pct >= 80 %}bg-success{% elif pct >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
-           style="width: {{ pct }}%"></div>
+           style="width: {{ pct }}%" role="progressbar" title="{{ pct }}% of booking goal"></div>
     </div>
     <div class="text-muted small mt-1">{{ pct }}% — Target CPA: <${{ target.cpa_max }}</div>
   </div>
@@ -63,7 +71,15 @@
   <div class="table-responsive">
     <table class="table table-dark table-hover table-sm mb-0">
       <thead class="table-secondary text-dark">
-        <tr><th>Date</th><th>Contact</th><th>Location</th><th>Source</th><th>Campaign</th><th>GCLID</th></tr>
+        <tr>
+          <th>Date</th>
+          <th>Contact</th>
+          <th>Location</th>
+          <th>Source</th>
+          <th>Campaign</th>
+          <th>LSA</th>
+          <th>GCLID</th>
+        </tr>
       </thead>
       <tbody>
         {% for b in bookings %}
@@ -71,12 +87,26 @@
           <td>{{ b.booking_date.strftime('%b %d, %Y') }}</td>
           <td class="small">
             {{ b.notes or '—' }}
-            {% if b.email %}<div class="text-muted" class="contact-meta">{{ b.email }}</div>{% endif %}
-            {% if b.phone %}<div class="text-muted" class="contact-meta">{{ b.phone }}</div>{% endif %}
+            {% if b.email %}<div class="contact-meta text-muted">{{ b.email }}</div>{% endif %}
+            {% if b.phone %}<div class="contact-meta text-muted">{{ b.phone }}</div>{% endif %}
           </td>
-          <td><span class="badge {% if b.location == 'SD' %}bg-warning text-dark{% elif b.location == 'AV' %}bg-info text-dark{% else %}bg-secondary{% endif %}">{{ b.location or '—' }}</span></td>
+          <td>
+            <span class="badge {% if b.location == 'SD' %}bg-warning text-dark{% elif b.location == 'AV' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
+              {{ b.location or '—' }}
+            </span>
+          </td>
           <td class="small">{{ b.source or '—' }}</td>
           <td class="small text-muted">{{ b.campaign or '—' }}</td>
+          <td class="small">
+            {% if b.lsa_lead_id %}
+              <span class="badge {% if b.lsa_charged %}bg-success{% else %}bg-secondary{% endif %}"
+                    title="LSA Lead ID: {{ b.lsa_lead_id }}">
+                {% if b.lsa_charged %}✓ charged{% else %}matched{% endif %}
+              </span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
           <td class="small">
             {% if b.gclid %}
               <span class="badge bg-success" title="{{ b.gclid }}">✓ tracked</span>
@@ -87,7 +117,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="text-center text-muted py-4">No bookings logged yet. Click "Log Booking" to add.</td>
+          <td colspan="7" class="text-center text-muted py-4">No bookings logged yet. Click "Log Booking" to add.</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -95,43 +125,79 @@
   </div>
 </div>
 
-<!-- Add Booking Modal -->
-<div class="modal fade" id="addBookingModal" tabindex="-1">
+<!-- LSA Upload Modal -->
+<div class="modal fade" id="lsaUploadModal" tabindex="-1" aria-labelledby="lsaUploadModalLabel" role="dialog">
   <div class="modal-dialog">
     <div class="modal-content bg-dark border-secondary text-light">
       <div class="modal-header border-secondary">
-        <h5 class="modal-title text-warning">Log New Booking</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title text-info" id="lsaUploadModalLabel">
+          <i class="bi bi-telephone-inbound me-2"></i>Match Google Local Services Sheet
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">
+          Download your leads CSV from Google Local Services Ads and upload it here.
+          Bookings with a matching phone number will be tagged as LSA leads.
+        </p>
+        <div class="mb-3">
+          <label for="lsaFile" class="form-label small">LSA CSV File</label>
+          <input type="file" class="form-control bg-dark text-light border-secondary"
+                 id="lsaFile" accept=".csv" title="Google Local Services Ads leads CSV">
+        </div>
+        <div id="lsaStatus" class="small"></div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-info" onclick="uploadLsa(this)">
+          <i class="bi bi-search me-1"></i>Match Leads
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Booking Modal -->
+<div class="modal fade" id="addBookingModal" tabindex="-1" aria-labelledby="addBookingModalLabel" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark border-secondary text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title text-warning" id="addBookingModalLabel">Log New Booking</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <div class="mb-3">
-          <label class="form-label small">Date</label>
-          <input type="date" class="form-control bg-dark text-light border-secondary" id="bDate" value="{{ today }}">
+          <label for="bDate" class="form-label small">Date</label>
+          <input type="date" class="form-control bg-dark text-light border-secondary"
+                 id="bDate" title="Booking date" value="{{ today }}">
         </div>
         <div class="mb-3">
-          <label class="form-label small">Location</label>
-          <select class="form-select bg-dark text-light border-secondary" id="bLocation">
+          <label for="bLocation" class="form-label small">Location</label>
+          <select class="form-select bg-dark text-light border-secondary" id="bLocation" title="Office location" aria-label="Location">
             <option value="SD">San Diego</option>
             <option value="AV">Apple Valley</option>
             <option value="">Unknown</option>
           </select>
         </div>
         <div class="mb-3">
-          <label class="form-label small">Source</label>
-          <input type="text" class="form-control bg-dark text-light border-secondary" id="bSource" placeholder="Google Ads, GMB, Referral, Organic...">
+          <label for="bSource" class="form-label small">Source</label>
+          <input type="text" class="form-control bg-dark text-light border-secondary"
+                 id="bSource" title="Lead source" placeholder="Google Ads, GMB, Referral, Organic...">
         </div>
         <div class="mb-3">
-          <label class="form-label small">Campaign (optional)</label>
-          <input type="text" class="form-control bg-dark text-light border-secondary" id="bCampaign">
+          <label for="bCampaign" class="form-label small">Campaign (optional)</label>
+          <input type="text" class="form-control bg-dark text-light border-secondary"
+                 id="bCampaign" title="Campaign name" placeholder="e.g. estate-planning-sd">
         </div>
         <div class="mb-3">
-          <label class="form-label small">Notes (optional)</label>
-          <input type="text" class="form-control bg-dark text-light border-secondary" id="bNotes">
+          <label for="bNotes" class="form-label small">Notes (optional)</label>
+          <input type="text" class="form-control bg-dark text-light border-secondary"
+                 id="bNotes" title="Notes" placeholder="Client name or other notes">
         </div>
       </div>
       <div class="modal-footer border-secondary">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-warning" onclick="submitBooking()">Save Booking</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" onclick="submitBooking()">Save Booking</button>
       </div>
     </div>
   </div>
@@ -143,21 +209,74 @@
 function submitBooking() {
   const data = {
     booking_date: document.getElementById('bDate').value,
-    location: document.getElementById('bLocation').value,
-    source: document.getElementById('bSource').value,
-    campaign: document.getElementById('bCampaign').value,
-    notes: document.getElementById('bNotes').value,
+    location:     document.getElementById('bLocation').value,
+    source:       document.getElementById('bSource').value,
+    campaign:     document.getElementById('bCampaign').value,
+    notes:        document.getElementById('bNotes').value,
   };
   fetch('/api/bookings/add', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(data)
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
   })
   .then(r => r.json())
   .then(d => {
     if (d.ok) { showToast('Booking logged!'); setTimeout(() => location.reload(), 1000); }
     else showToast('Error: ' + d.error, true);
   });
+}
+
+function backfillPhones(btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Fetching…';
+  fetch('/api/bookings/backfill-phones', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        showToast(`Phones updated: ${d.updated} of ${d.total_missing || 0} bookings`);
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showToast('Error: ' + d.error, true);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-telephone me-1"></i>Backfill Phones';
+      }
+    })
+    .catch(() => {
+      showToast('Request failed', true);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-telephone me-1"></i>Backfill Phones';
+    });
+}
+
+function uploadLsa(btn) {
+  const file = document.getElementById('lsaFile').files[0];
+  if (!file) { showToast('Select a CSV file first', true); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Matching…';
+
+  const fd = new FormData();
+  fd.append('lsa_file', file);
+
+  fetch('/api/lsa/upload', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-search me-1"></i>Match Leads';
+      if (d.error) {
+        document.getElementById('lsaStatus').innerHTML =
+          `<span class="text-danger">${d.error}${d.columns_found ? ' — columns: ' + d.columns_found.join(', ') : ''}</span>`;
+        return;
+      }
+      document.getElementById('lsaStatus').innerHTML =
+        `<span class="text-success">✓ ${d.newly_matched} new matches found out of ${d.lsa_leads_in_file} LSA leads</span>`;
+      if (d.newly_matched > 0) setTimeout(() => location.reload(), 1800);
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-search me-1"></i>Match Leads';
+      showToast('Upload failed', true);
+    });
 }
 </script>
 {% endblock %}
