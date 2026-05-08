@@ -54,26 +54,40 @@
 
 <!-- Booking Log -->
 <div class="card bg-black border-secondary">
-  <div class="card-header border-secondary">
+  <div class="card-header border-secondary d-flex justify-content-between align-items-center">
     <h6 class="mb-0">All Bookings</h6>
+    <a href="/api/conversions/export" class="btn btn-sm btn-outline-secondary" title="Download for Google Ads offline conversion import">
+      <i class="bi bi-download me-1"></i>Conversions CSV
+    </a>
   </div>
   <div class="table-responsive">
     <table class="table table-dark table-hover table-sm mb-0">
       <thead class="table-secondary text-dark">
-        <tr><th>Date</th><th>Location</th><th>Source</th><th>Campaign</th><th>Notes</th></tr>
+        <tr><th>Date</th><th>Contact</th><th>Location</th><th>Source</th><th>Campaign</th><th>GCLID</th></tr>
       </thead>
       <tbody>
         {% for b in bookings %}
         <tr>
           <td>{{ b.booking_date.strftime('%b %d, %Y') }}</td>
-          <td><span class="badge {% if b.location == 'SD' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">{{ b.location or '—' }}</span></td>
+          <td class="small">
+            {{ b.notes or '—' }}
+            {% if b.email %}<div class="text-muted" class="contact-meta">{{ b.email }}</div>{% endif %}
+            {% if b.phone %}<div class="text-muted" class="contact-meta">{{ b.phone }}</div>{% endif %}
+          </td>
+          <td><span class="badge {% if b.location == 'SD' %}bg-warning text-dark{% elif b.location == 'AV' %}bg-info text-dark{% else %}bg-secondary{% endif %}">{{ b.location or '—' }}</span></td>
           <td class="small">{{ b.source or '—' }}</td>
           <td class="small text-muted">{{ b.campaign or '—' }}</td>
-          <td class="small text-muted">{{ b.notes or '' }}</td>
+          <td class="small">
+            {% if b.gclid %}
+              <span class="badge bg-success" title="{{ b.gclid }}">✓ tracked</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="text-center text-muted py-4">No bookings logged yet. Click "Log Booking" to add.</td>
+          <td colspan="6" class="text-center text-muted py-4">No bookings logged yet. Click "Log Booking" to add.</td>
         </tr>
         {% endfor %}
       </tbody>

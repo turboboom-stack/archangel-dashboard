@@ -1,7 +1,77 @@
-body {
-  font-size: 0.875rem;
+/* --- Archangel Command Center — Color System --- */
+:root {
+  --arc-bg:        #12141f;
+  --arc-surface:   #1e2133;
+  --arc-surface-2: #252840;
+  --arc-border:    rgba(255,255,255,0.09);
+  --arc-text:      #e4e8f0;
+  --arc-muted:     #8b96b0;
+  --arc-accent:    #ffc107;
 }
 
+body {
+  font-size: 0.875rem;
+  background-color: var(--arc-bg) !important;
+  color: var(--arc-text);
+}
+
+/* Nav */
+.navbar.bg-black {
+  background-color: #0b0d17 !important;
+}
+
+/* Override Bootstrap dark card/bg-black to use surface colors */
+.bg-gray-900 {
+  background-color: var(--arc-surface-2) !important;
+}
+
+.card {
+  background-color: var(--arc-surface);
+  border-color: var(--arc-border) !important;
+}
+
+.bg-black {
+  background-color: var(--arc-surface) !important;
+}
+
+.bg-dark {
+  background-color: var(--arc-surface-2) !important;
+}
+
+/* Better contrast muted text */
+.text-muted {
+  color: var(--arc-muted) !important;
+}
+
+/* Tables */
+.table-dark {
+  --bs-table-bg: transparent;
+  --bs-table-hover-bg: rgba(255,255,255,0.05);
+  --bs-table-color: var(--arc-text);
+  --bs-table-border-color: rgba(255,255,255,0.08);
+}
+
+.table-secondary.text-dark {
+  --bs-table-bg: var(--arc-surface-2);
+  color: #bfc7d8 !important;
+}
+
+.table-secondary.text-dark th {
+  color: #bfc7d8 !important;
+}
+
+/* Borders */
+.border-secondary {
+  border-color: var(--arc-border) !important;
+}
+
+/* Progress bars */
+.progress {
+  border-radius: 6px;
+  background-color: rgba(255,255,255,0.08) !important;
+}
+
+/* Misc */
 #summaryText {
   white-space: pre-wrap;
   font-family: inherit;
@@ -16,34 +86,8 @@ body {
   font-size: 0.7rem;
 }
 
-.bg-gray-900 {
-  background-color: #111 !important;
-}
-
-.card {
-  background-color: #111;
-}
-
-.table-dark {
-  --bs-table-bg: transparent;
-  --bs-table-hover-bg: rgba(255,255,255,0.05);
-}
-
-.table-secondary.text-dark {
-  --bs-table-bg: #2a2a2a;
-  color: #ccc !important;
-}
-
-.table-secondary.text-dark th {
-  color: #ccc !important;
-}
-
 .display-6 {
   font-size: 1.75rem;
-}
-
-.progress {
-  border-radius: 6px;
 }
 
 .action-item:hover {
@@ -59,7 +103,7 @@ canvas {
   height: 4px;
 }
 .table-responsive::-webkit-scrollbar-thumb {
-  background: #444;
+  background: #3a3f55;
   border-radius: 2px;
 }
 
@@ -68,12 +112,38 @@ canvas {
   font-weight: 600;
 }
 
-/* Sticky table headers in scrollable containers */
+/* Sticky table headers */
 .sticky-top {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #2a2a2a;
+  background: var(--arc-surface-2);
 }
 
 .filter-date-input { width: 160px; }
+
+.contact-meta { font-size: .7rem; }
+
+/* Form controls */
+.form-control.bg-dark {
+  background-color: var(--arc-surface-2) !important;
+  border-color: var(--arc-border) !important;
+  color: var(--arc-text) !important;
+}
+
+/* Alert tweaks */
+.alert-secondary {
+  background-color: var(--arc-surface-2) !important;
+  border-color: var(--arc-border) !important;
+  color: var(--arc-text);
+}
+
+/* Code blocks */
+code {
+  color: #79c0ff;
+}
+
+/* Badge secondary */
+.badge.bg-secondary {
+  background-color: #3a4060 !important;
+}

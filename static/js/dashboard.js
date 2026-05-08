@@ -56,9 +56,17 @@ function refreshActionItems() {
 function darkChartOptions() {
   return {
     responsive: true,
+    animation: { duration: 400 },
     plugins: {
       legend: {
-        labels: { color: '#aaa', boxWidth: 12 }
+        labels: { color: '#8b96b0', boxWidth: 12, padding: 16 }
+      },
+      tooltip: {
+        backgroundColor: '#1e2133',
+        borderColor: 'rgba(255,255,255,0.12)',
+        borderWidth: 1,
+        titleColor: '#e4e8f0',
+        bodyColor: '#8b96b0',
       }
     },
   };
@@ -67,7 +75,29 @@ function darkChartOptions() {
 function darkAxis(labelSuffix, position) {
   return {
     position,
-    ticks: { color: '#aaa', callback: v => `${v}${labelSuffix === '$' ? '' : ''}` },
-    grid: { color: 'rgba(255,255,255,0.07)' },
+    ticks: {
+      color: '#8b96b0',
+      callback: v => labelSuffix === '$' ? `$${v}` : v,
+    },
+    grid: { color: 'rgba(255,255,255,0.06)' },
+    border: { color: 'rgba(255,255,255,0.08)' },
+  };
+}
+
+/* Shared line dataset styling — call this to ensure lines always render */
+function lineDataset(label, data, color, extra) {
+  return {
+    label,
+    data,
+    borderColor: color,
+    backgroundColor: color + '20',  // hex color with 12% alpha
+    borderWidth: 2,
+    pointRadius: 5,
+    pointHoverRadius: 7,
+    pointBackgroundColor: color,
+    tension: 0.35,
+    fill: false,
+    spanGaps: true,
+    ...extra,
   };
 }

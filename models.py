@@ -130,6 +130,9 @@ class ClioBooking(db.Model):
     campaign = db.Column(db.String(256))
     entered_at = db.Column(db.DateTime, default=datetime.utcnow)
     notes = db.Column(db.Text)
+    gclid = db.Column(db.String(256), nullable=True)   # Google Click ID for offline conversion import
+    email = db.Column(db.String(256), nullable=True)
+    phone = db.Column(db.String(64), nullable=True)
 
 
 class AdRecommendation(db.Model):

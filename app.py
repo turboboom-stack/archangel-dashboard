@@ -16,6 +16,14 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
+    # Add columns introduced after initial deploy (SQLite ALTER TABLE)
+    from sqlalchemy import text
+    with db.engine.connect() as _conn:
+        _existing = {row[1] for row in _conn.execute(text("PRAGMA table_info(clio_bookings)"))}
+        for _col, _typedef in [("gclid", "VARCHAR(256)"), ("email", "VARCHAR(256)"), ("phone", "VARCHAR(64)")]:
+            if _col not in _existing:
+                _conn.execute(text(f"ALTER TABLE clio_bookings ADD COLUMN {_col} {_typedef}"))
+        _conn.commit()
 
 # Start background scheduler and immediately kick off a full data refresh
 from engines import cache_manager
@@ -410,6 +418,76 @@ def generate_summary():
     if err:
         return jsonify({"error": err}), 500
     return jsonify({"ok": True, "summary": text})
+
+
+@app.route("/webhook/clio", methods=["POST"])
+def clio_webhook():
+    secret = os.environ.get("CLIO_WEBHOOK_SECRET") or config._env.get("CLIO_WEBHOOK_SECRET", "")
+    if secret:
+        incoming = (request.headers.get("x-webhook-secret")
+                    or request.headers.get("x-zapier-secret", ""))
+        if incoming != secret:
+            return jsonify({"error": "Unauthorized"}), 401
+
+    body = request.get_json(silent=True) or request.form.to_dict()
+
+    name = (body.get("name") or body.get("full_name") or body.get("contact_name")
+            or " ".join(filter(None, [body.get("first_name"), body.get("last_name")]))
+            or "Unknown")
+    email = (body.get("email") or body.get("email_address")
+             or body.get("contact_email") or "")
+    phone = (body.get("phone") or body.get("phone_number")
+             or body.get("contact_phone") or body.get("mobile") or "")
+    source   = body.get("utm_source") or body.get("source") or "clio_webhook"
+    campaign = body.get("utm_campaign") or body.get("campaign") or ""
+    gclid    = body.get("gclid") or body.get("google_click_id") or ""
+    notes    = (body.get("message") or body.get("notes")
+                or body.get("description") or name)
+
+    booking = ClioBooking(
+        booking_date=date.today(),
+        source=source,
+        campaign=campaign,
+        notes=notes,
+        gclid=gclid or None,
+        email=email or None,
+        phone=phone or None,
+    )
+    db.session.add(booking)
+    db.session.commit()
+
+    from engines import action_items as ai
+    ai.run_all()
+
+    return jsonify({"received": True, "id": booking.id})
+
+
+@app.route("/api/conversions/export")
+def export_conversions():
+    import io, csv as _csv
+    from flask import make_response
+
+    conversion_action = os.environ.get("GOOGLE_ADS_CONVERSION_ACTION", "Clio Booking")
+    bookings = (
+        db.session.query(ClioBooking)
+        .filter(ClioBooking.gclid.isnot(None))
+        .order_by(ClioBooking.entered_at.desc())
+        .all()
+    )
+
+    output = io.StringIO()
+    writer = _csv.writer(output)
+    writer.writerow(["Google Click ID", "Conversion Name", "Conversion Time",
+                     "Conversion Value", "Conversion Currency"])
+    for b in bookings:
+        conv_time = (b.entered_at.strftime("%Y-%m-%d %H:%M:%S+00:00")
+                     if b.entered_at else date.today().isoformat())
+        writer.writerow([b.gclid, conversion_action, conv_time, "1", "USD"])
+
+    response = make_response(output.getvalue())
+    response.headers["Content-Type"] = "text/csv"
+    response.headers["Content-Disposition"] = "attachment; filename=clio-conversions.csv"
+    return response
 
 
 @app.route("/api/debug/gsc")

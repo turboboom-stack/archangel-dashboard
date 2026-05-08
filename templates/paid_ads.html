@@ -248,8 +248,8 @@ function buildCharts(snaps) {
     data: {
       labels,
       datasets: [
-        { label: 'Spend ($)', data: spendData, borderColor: '#ffc107', tension: 0.3, yAxisID: 'y' },
-        { label: 'Conversions', data: convData, borderColor: '#20c997', tension: 0.3, yAxisID: 'y1' },
+        lineDataset('Spend ($)', spendData, '#ffc107', { yAxisID: 'y' }),
+        lineDataset('Conversions', convData, '#20c997', { yAxisID: 'y1' }),
       ]
     },
     options: { ...darkChartOptions(), scales: { y: darkAxis('$', 'left'), y1: darkAxis('conv', 'right') } }
@@ -260,8 +260,17 @@ function buildCharts(snaps) {
     data: {
       labels,
       datasets: [
-        { label: 'CPA ($)', data: cpaData, borderColor: '#dc3545', tension: 0.3, fill: false },
-        { label: 'Target ($150)', data: snaps.map(() => 150), borderColor: '#28a745', borderDash: [5,5], pointRadius: 0 },
+        lineDataset('CPA ($)', cpaData, '#e05c6b', {}),
+        {
+          label: 'Target ($150)',
+          data: snaps.map(() => 150),
+          borderColor: '#3dd68c',
+          borderDash: [6, 4],
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0,
+          fill: false,
+        },
       ]
     },
     options: { ...darkChartOptions(), scales: { y: darkAxis('$', 'left') } }
