@@ -128,7 +128,11 @@ def fetch(app):
             })
 
         with app.app_context():
-            db.session.query(Ga4Summary).delete()
+            # Keep last 30 records for historical comparison; drop older ones
+            all_rows = db.session.query(Ga4Summary).order_by(Ga4Summary.refreshed_at.desc()).all()
+            if len(all_rows) >= 30:
+                for old in all_rows[29:]:
+                    db.session.delete(old)
             db.session.add(Ga4Summary(
                 date_range=f"{DATE_RANGE['startDate']} to {DATE_RANGE['endDate']}",
                 sessions=sessions,
