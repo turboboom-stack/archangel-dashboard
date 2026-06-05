@@ -56,6 +56,49 @@ def _metric_val(row, index):
         return 0.0
 
 
+def fetch_period(start_date, end_date):
+    """Fetch GA4 summary for an arbitrary date range. Returns a dict or None."""
+    try:
+        svc = _get_service()
+        date_range = {"startDate": start_date, "endDate": end_date}
+
+        def _run(dimensions, metrics, dimension_filter=None, limit=10):
+            body = {
+                "dateRanges": [date_range],
+                "dimensions": [{"name": d} for d in dimensions],
+                "metrics":    [{"name": m} for m in metrics],
+                "limit": limit,
+            }
+            if dimension_filter:
+                body["dimensionFilter"] = dimension_filter
+            return svc.properties().runReport(property=PROPERTY, body=body).execute()
+
+        row = (_run([], ["sessions","activeUsers","newUsers","averageSessionDuration","bounceRate"], limit=1)
+               .get("rows", [{}]) or [{}])[0]
+
+        events_resp = _run(
+            ["eventName"], ["eventCount"],
+            dimension_filter={"filter": {"fieldName": "eventName",
+                              "inListFilter": {"values": config.GA4_CONVERSION_EVENTS}}},
+            limit=20,
+        )
+        conversions = {r["dimensionValues"][0]["value"]: int(float(r["metricValues"][0]["value"]))
+                       for r in events_resp.get("rows", [])}
+        for ev in config.GA4_CONVERSION_EVENTS:
+            conversions.setdefault(ev, 0)
+
+        return {
+            "sessions":   int(_metric_val(row, 0)),
+            "new_users":  int(_metric_val(row, 2)),
+            "bounce_rate": round(_metric_val(row, 4) * 100, 1),
+            "avg_session_duration": round(_metric_val(row, 3), 1),
+            "conversions": conversions,
+        }
+    except Exception as e:
+        log.error(f"GA4 fetch_period failed ({start_date} to {end_date}): {e}")
+        return None
+
+
 def fetch(app):
     try:
         svc = _get_service()

@@ -90,7 +90,7 @@ def _pct_change(current, previous):
 
 def _gather_data(app):
     """Pull 14 days of data from all sources. Returns a dict of facts."""
-    from models import db, GoogleAdsSnapshot, GoogleAdsKeyword, AdRecommendation, ClioBooking, Ga4Summary, WebflowPost
+    from models import db, GoogleAdsSnapshot, GoogleAdsKeyword, AdRecommendation, ClioBooking, WebflowPost
     from connectors import gmb_connector, gsc_connector, webflow_connector
 
     today = date.today()
@@ -229,22 +229,17 @@ def _gather_data(app):
             top = ga4["top_pages"][:3]
             facts["ga4_top_pages"]   = [f"{p['page']} ({p['sessions']} sessions)" for p in top]
 
-            # Compare to previous snapshot for growth context
-            prev = (
-                db.session.query(Ga4Summary)
-                .order_by(Ga4Summary.refreshed_at.desc())
-                .offset(1)
-                .first()
-            )
+            # Fetch previous 14-day period live for comparison
+            prev_end   = (today - timedelta(days=15)).isoformat()
+            prev_start = (today - timedelta(days=28)).isoformat()
+            prev = ga4_connector.fetch_period(prev_start, prev_end)
             if prev:
-                facts["ga4_sessions_prev"]  = prev.sessions
-                facts["ga4_new_users_prev"] = prev.new_users
-                facts["ga4_sessions_change"] = _pct_change(ga4["sessions"], prev.sessions)
-                facts["ga4_new_users_change"] = _pct_change(ga4["new_users"], prev.new_users)
-                conv_total = sum(ga4["conversions"].values())
-                prev_conv = sum(json.loads(prev.conversions_json or "{}").values())
-                facts["ga4_conversions_total"] = conv_total
-                facts["ga4_conversions_change"] = _pct_change(conv_total, prev_conv)
+                facts["ga4_sessions_change"]     = _pct_change(ga4["sessions"], prev["sessions"])
+                facts["ga4_new_users_change"]     = _pct_change(ga4["new_users"], prev["new_users"])
+                conv_total  = sum(ga4["conversions"].values())
+                prev_conv   = sum(prev["conversions"].values())
+                facts["ga4_conversions_total"]   = conv_total
+                facts["ga4_conversions_change"]  = _pct_change(conv_total, prev_conv)
 
         # ── Recently published blog posts ─────────────────────────────────────
         recent_posts = (
