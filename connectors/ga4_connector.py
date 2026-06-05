@@ -10,7 +10,7 @@ from models import db, Ga4Summary, CacheMetadata
 log = logging.getLogger(__name__)
 
 PROPERTY = f"properties/{config.GA4_PROPERTY_ID}"
-DATE_RANGE = {"startDate": "7daysAgo", "endDate": "today"}
+DATE_RANGE = {"startDate": "14daysAgo", "endDate": "today"}
 
 
 def _get_service():

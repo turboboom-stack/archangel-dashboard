@@ -1,6 +1,6 @@
 """
 Weekly CEO Summary Generator
-Pulls the past 7 days of data across all sources, calls Claude,
+Pulls the past 14 days of data across all sources, calls Claude,
 and returns a formatted plain-text summary ready to paste into an email.
 """
 
@@ -72,7 +72,7 @@ def _gather_data(app):
     from connectors import gmb_connector, gsc_connector, webflow_connector
 
     today = date.today()
-    week_ago = today - timedelta(days=7)
+    week_ago = today - timedelta(days=14)
     facts = {"week_ending": today.isoformat(), "week_start": week_ago.isoformat()}
 
     with app.app_context():
@@ -248,7 +248,7 @@ def _build_prompt(facts):
     # GA4
     if "ga4_sessions" in facts:
         dur = facts["ga4_avg_dur"]
-        lines.append(f"\nSite Analytics (last 7 days):")
+        lines.append(f"\nSite Analytics (last 14 days):")
         lines.append(f"  Sessions: {facts['ga4_sessions']}, New users: {facts['ga4_new_users']}")
         lines.append(f"  Avg session: {int(dur // 60)}m {int(dur % 60)}s, Bounce rate: {facts['ga4_bounce']}%")
         if facts.get("ga4_conversions"):
