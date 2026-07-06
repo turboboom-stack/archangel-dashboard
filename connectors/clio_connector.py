@@ -33,6 +33,12 @@ def _load_token():
 
 
 def _refresh_token(token_data):
+    if not token_data.get("refresh_token"):
+        raise RuntimeError(
+            "Clio access token has expired and no refresh_token is stored — "
+            "re-run clio_auth_setup.py to reauthorize, then update the "
+            "CLIO_TOKEN_JSON env var on Railway."
+        )
     payload = urllib.parse.urlencode({
         "grant_type":    "refresh_token",
         "refresh_token": token_data["refresh_token"],

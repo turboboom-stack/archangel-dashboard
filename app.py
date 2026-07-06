@@ -448,21 +448,23 @@ def backfill_phones():
             id_map[b.clio_id.replace("contact-", "")] = b
 
     updated = 0
-    errors = []
-    for contact in _paginate("contacts", {
-        "fields": "id,primary_phone_number",
-        "order":  "id(desc)",
-        "limit":  200,
-    }):
-        cid = str(contact.get("id", ""))
-        if cid not in id_map:
-            continue
-        raw_phone = contact.get("primary_phone_number") or ""
-        if raw_phone:
-            id_map[cid].phone = raw_phone
-            updated += 1
-        if updated >= len(id_map):
-            break  # found all we needed
+    try:
+        for contact in _paginate("contacts", {
+            "fields": "id,primary_phone_number",
+            "order":  "id(desc)",
+            "limit":  200,
+        }):
+            cid = str(contact.get("id", ""))
+            if cid not in id_map:
+                continue
+            raw_phone = contact.get("primary_phone_number") or ""
+            if raw_phone:
+                id_map[cid].phone = raw_phone
+                updated += 1
+            if updated >= len(id_map):
+                break  # found all we needed
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 502
 
     db.session.commit()
     return jsonify({"ok": True, "updated": updated, "total_missing": len(missing)})
