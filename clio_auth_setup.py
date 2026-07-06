@@ -18,6 +18,7 @@ import threading
 import urllib.parse
 import urllib.request
 import webbrowser
+from datetime import datetime, timedelta
 from pathlib import Path
 
 SCRIPT_DIR   = Path(__file__).parent
@@ -138,6 +139,19 @@ def main():
     # Store client credentials alongside token for refresh
     token_data["client_id"]     = client_id
     token_data["client_secret"] = client_secret
+
+    expires_in = token_data.get("expires_in")
+    if expires_in:
+        token_data["expires_at"] = (
+            datetime.utcnow() + timedelta(seconds=int(expires_in))
+        ).isoformat()
+
+    if not token_data.get("refresh_token"):
+        print(
+            "\nWARNING: Clio did not return a refresh_token. This token will "
+            "need to be manually renewed (by re-running this script) when it "
+            "expires — there's no way to auto-refresh it."
+        )
 
     TOKEN_FILE.write_text(json.dumps(token_data, indent=2))
     print(f"\nToken saved to {TOKEN_FILE}")

@@ -10,6 +10,7 @@ from models import db, ActionItem, GoogleAdsSnapshot, GmbInsight, GscQuery, Webf
 import config
 import connectors.competitor_reports_connector as cr_conn
 import connectors.seo_db_connector as seo_conn
+import connectors.clio_connector as clio_conn
 
 
 SEVERITY_RANK = {"critical": 0, "warning": 1, "opportunity": 2}
@@ -228,6 +229,28 @@ def rule_keyword_queue_low():
         )
 
 
+def rule_clio_token_expiring():
+    status = clio_conn.token_status()
+    if not status["exists"]:
+        return _item(
+            "critical", "clio", "CLIO_TOKEN_MISSING",
+            "No Clio token found — Clio data (bookings, phones) will not sync. "
+            "Run clio_auth_setup.py to authorize.",
+        )
+    if status["has_refresh_token"]:
+        return None  # auto-refreshes; no action needed
+    days_left = status["days_left"]
+    if days_left is not None and days_left <= 5:
+        urgency = "critical" if days_left <= 0 else "warning"
+        when = "has expired" if days_left <= 0 else f"expires in {days_left:.0f} day(s)"
+        return _item(
+            urgency, "clio", "CLIO_TOKEN_EXPIRING",
+            f"Clio token {when} and has no refresh_token — it will not auto-renew. "
+            "Re-run clio_auth_setup.py locally, then update CLIO_TOKEN_JSON on Railway "
+            "(and clear the old file on the Railway volume so it reseeds).",
+        )
+
+
 # ── Engine runner ─────────────────────────────────────────────────────────────
 
 ALL_RULES = [
@@ -241,6 +264,7 @@ ALL_RULES = [
     rule_content_gap,
     rule_content_velocity,
     rule_keyword_queue_low,
+    rule_clio_token_expiring,
 ]
 
 

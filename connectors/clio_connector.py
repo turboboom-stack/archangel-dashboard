@@ -32,6 +32,16 @@ def _load_token():
     return json.loads(TOKEN_FILE.read_text())
 
 
+def _stamp_expiry(token_data):
+    """Compute and set expires_at from expires_in so proactive refresh/expiry checks work."""
+    expires_in = token_data.get("expires_in")
+    if expires_in:
+        token_data["expires_at"] = (
+            datetime.utcnow() + timedelta(seconds=int(expires_in))
+        ).isoformat()
+    return token_data
+
+
 def _refresh_token(token_data):
     if not token_data.get("refresh_token"):
         raise RuntimeError(
@@ -56,9 +66,32 @@ def _refresh_token(token_data):
     # Preserve client creds
     new_token.setdefault("client_id",     token_data["client_id"])
     new_token.setdefault("client_secret", token_data["client_secret"])
+    _stamp_expiry(new_token)
     TOKEN_FILE.write_text(json.dumps(new_token, indent=2))
     log.info("Clio token refreshed.")
     return new_token
+
+
+def token_status():
+    """Health snapshot for the Clio token, used to warn before it expires."""
+    try:
+        token = _load_token()
+    except FileNotFoundError:
+        return {"exists": False, "has_refresh_token": False, "days_left": None}
+
+    days_left = None
+    expires_at = token.get("expires_at")
+    if expires_at:
+        try:
+            days_left = (datetime.fromisoformat(expires_at) - datetime.utcnow()).total_seconds() / 86400
+        except (ValueError, TypeError):
+            pass
+
+    return {
+        "exists": True,
+        "has_refresh_token": bool(token.get("refresh_token")),
+        "days_left": days_left,
+    }
 
 
 def _get_token():
