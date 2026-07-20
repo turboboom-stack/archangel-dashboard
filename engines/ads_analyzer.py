@@ -26,6 +26,11 @@ San Diego budget is currently paused — do not recommend increasing San Diego s
 budget-category recommendations toward Apple Valley or toward efficiency (bids, negatives, keywords) \
 within San Diego's existing budget instead.
 
+Campaign focus is shifting from probate to estate planning, wills, and living trusts — target \
+roughly a 90/10 split (90% estate planning/wills/trusts, 10% probate) across keyword and budget \
+recommendations. Don't recommend eliminating probate entirely, just reduce its weight relative to \
+estate planning content.
+
 You analyze performance data and generate specific, actionable recommendations. \
 Each recommendation must be directly implementable in Google Ads.
 
