@@ -48,10 +48,14 @@ GMB_LOCATION_AV = "13038354335424408062"
 
 # ── Monthly KPI targets ───────────────────────────────────────────────────────
 MONTHLY_TARGETS = {
-    "april":  {"bookings": 15, "cpa_max": 150, "posts": 8},
-    "may":    {"bookings": 25, "cpa_max": 120, "posts": 8},
-    "june":   {"bookings": 30, "cpa_max": 100, "posts": 8},
-    "default":{"bookings": 15, "cpa_max": 150, "posts": 8},
+    "april":     {"bookings": 15, "cpa_max": 150, "posts": 8},
+    "may":       {"bookings": 25, "cpa_max": 120, "posts": 8},
+    "june":      {"bookings": 30, "cpa_max": 100, "posts": 8},
+    "july":      {"bookings": 32, "cpa_max": 100, "posts": 8},
+    "august":    {"bookings": 34, "cpa_max": 100, "posts": 8},
+    "september": {"bookings": 37, "cpa_max": 100, "posts": 8},
+    "october":   {"bookings": 40, "cpa_max": 100, "posts": 8},
+    "default":   {"bookings": 40, "cpa_max": 100, "posts": 8},
 }
 
 # ── Hosted-deployment support ─────────────────────────────────────────────────
