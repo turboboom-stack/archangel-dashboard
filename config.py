@@ -90,3 +90,34 @@ STUBS = {
     "ga4": False,
     "google_ads": False,  # always file upload — no stub
 }
+
+# ── Google Ads API (live) ───────────────────────────────────────────────────────
+# Requires a Manager (MCC) account + developer token under turboboomproduction@gmail.com.
+# See /Users/jordan/.claude/plans/okay-before-that-we-deep-sprout.md Phase 0 for setup steps.
+GOOGLE_ADS_DEVELOPER_TOKEN  = os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN") or _env.get("GOOGLE_ADS_DEVELOPER_TOKEN", "")
+GOOGLE_ADS_CUSTOMER_ID      = os.environ.get("GOOGLE_ADS_CUSTOMER_ID") or _env.get("GOOGLE_ADS_CUSTOMER_ID", "")
+GOOGLE_ADS_LOGIN_CUSTOMER_ID = os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID") or _env.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "")
+
+# True once Jordan has completed Phase 0 and set the three env vars above.
+ADS_API_ENABLED = bool(GOOGLE_ADS_DEVELOPER_TOKEN and GOOGLE_ADS_CUSTOMER_ID)
+STUBS["google_ads_api"] = not ADS_API_ENABLED
+
+# Campaign-name substring (lowercase) → location code. Verify against real campaign
+# names once Phase 0 account audit is done; extend as campaigns are renamed/added.
+GOOGLE_ADS_LOCATION_MAP = {
+    "san diego":   "SD",
+    "apple valley": "AV",
+    " sd ":        "SD",
+    " av ":        "AV",
+}
+
+# ── Ad strategy business rules ───────────────────────────────────────────────────
+# Single source of truth for the AI advisory skills (engines/ads_skills/) — flip
+# these instead of hunting through prompt strings when strategy changes.
+AD_STRATEGY_RULES = {
+    "sd_status": "paused",   # "paused" | "active" — SD budget is currently paused
+    "av_status": "focus",    # AV is the current spend-growth priority
+    "estate_probate_split": {"estate_planning": 0.90, "probate": 0.10},
+    "cpa_ceiling_default": 150,
+    "calendly_url": "https://calendly.com/archangel-trust-cmartin/consultation",
+}

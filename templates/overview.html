@@ -78,10 +78,13 @@
   <div class="col-6 col-md-4 col-lg-2">
     <div class="card bg-gray-900 border-secondary h-100">
       <div class="card-body text-center p-3">
-        <div class="text-muted small mb-1"><i class="bi bi-currency-dollar me-1"></i>Ads CPA</div>
-        {% if latest_snap %}
-          <div class="display-6 fw-bold {% if latest_snap.cpa <= target.cpa_max %}text-success{% elif latest_snap.cpa <= target.cpa_max * 1.2 %}text-warning{% else %}text-danger{% endif %}">
-            ${{ latest_snap.cpa|int }}
+        <div class="text-muted small mb-1"><i class="bi bi-currency-dollar me-1"></i>Ads CPA
+          {% if live_cpa is not none %}<span class="badge bg-success ms-1" style="font-size:.6rem">live</span>{% endif %}
+        </div>
+        {% set display_cpa = live_cpa if live_cpa is not none else (latest_snap.cpa if latest_snap else none) %}
+        {% if display_cpa is not none %}
+          <div class="display-6 fw-bold {% if display_cpa <= target.cpa_max %}text-success{% elif display_cpa <= target.cpa_max * 1.2 %}text-warning{% else %}text-danger{% endif %}">
+            ${{ display_cpa|int }}
           </div>
           <div class="text-muted small">target <${{ target.cpa_max }}</div>
         {% else %}

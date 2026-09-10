@@ -39,6 +39,9 @@
           </span>
           <span class="badge bg-secondary">{{ rec.category }}</span>
           <strong>{{ rec.title }}</strong>
+          {% if rec.agent_version and rec.agent_version.startswith('skill:') %}
+          <span class="text-muted small">via {{ rec.agent_version[6:].rsplit('-', 3)[0]|replace('_', ' ') }}</span>
+          {% endif %}
         </div>
         <small class="text-muted text-nowrap ms-2">{{ rec.created_at.strftime('%b %d, %Y') }}</small>
       </div>
@@ -251,10 +254,11 @@ async function runAnalysis() {
     }
     if (!resp.ok) throw new Error(data.error || 'Unknown error');
     btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Running…';
-    // Poll until new recommendations appear (up to 2 minutes)
+    // Poll until new recommendations appear (up to 4 minutes — the analysis now runs
+    // ~9 sequential skill calls instead of 1)
     const start = Date.now();
     const poll = setInterval(async () => {
-      if (Date.now() - start > 120000) {
+      if (Date.now() - start > 240000) {
         clearInterval(poll);
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-play-circle me-1"></i>Run Analysis';

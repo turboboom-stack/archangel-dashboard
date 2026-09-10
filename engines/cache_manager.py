@@ -15,6 +15,7 @@ def _refresh_all(app):
     import connectors.gsc_connector as gsc
     import connectors.ga4_connector as ga4
     import connectors.clio_connector as clio
+    import connectors.google_ads_api_connector as ads_api
     import engines.action_items as ai
 
     logger.info("Cache refresh started")
@@ -47,6 +48,12 @@ def _refresh_all(app):
         logger.info("Clio: refreshed")
     except Exception as e:
         logger.error("Clio refresh error: %s", e)
+
+    try:
+        ads_api.fetch(app)  # no-op until config.ADS_API_ENABLED (Phase 0 credentials)
+        logger.info("Google Ads API: refreshed")
+    except Exception as e:
+        logger.error("Google Ads API refresh error: %s", e)
 
     try:
         with app.app_context():

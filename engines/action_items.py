@@ -5,8 +5,9 @@ The engine runs all rules over current cached data and persists results.
 """
 
 import json
-from datetime import datetime, date
-from models import db, ActionItem, GoogleAdsSnapshot, GmbInsight, GscQuery, WebflowPost, ClioBooking
+from datetime import datetime, date, timedelta
+from models import db, ActionItem, GoogleAdsSnapshot, GoogleAdsCampaignDaily, GmbInsight, \
+    GscQuery, WebflowPost, ClioBooking
 import config
 import connectors.competitor_reports_connector as cr_conn
 import connectors.seo_db_connector as seo_conn
@@ -229,6 +230,44 @@ def rule_keyword_queue_low():
         )
 
 
+def rule_ads_impression_share_lost_budget():
+    if config.AD_STRATEGY_RULES["av_status"] != "focus":
+        return None
+    since = date.today() - timedelta(days=14)
+    rows = (
+        db.session.query(GoogleAdsCampaignDaily)
+        .filter(GoogleAdsCampaignDaily.location == "AV", GoogleAdsCampaignDaily.date >= since,
+                GoogleAdsCampaignDaily.search_budget_lost_is.isnot(None))
+        .order_by(GoogleAdsCampaignDaily.date.desc())
+        .all()
+    )
+    if not rows:
+        return None
+    avg_lost = sum(r.search_budget_lost_is for r in rows) / len(rows)
+    if avg_lost >= 0.20:
+        return _item(
+            "opportunity", "ads", "ADS_IS_LOST_BUDGET_AV",
+            f"Apple Valley is losing {avg_lost*100:.0f}% of impression share to budget limits "
+            f"(14-day avg). There's headroom to spend more productively here.",
+            "View Paid Ads", "/paid-ads"
+        )
+
+
+def rule_attribution_coverage_low():
+    from engines import attribution
+    summary = attribution.summary(days=30)
+    if summary["total_bookings"] < 5:
+        return None  # not enough volume for the coverage % to be meaningful
+    if summary["gclid_coverage_pct"] < 30:
+        return _item(
+            "warning", "ads", "ATTRIBUTION_COVERAGE_LOW",
+            f"Only {summary['gclid_coverage_pct']:.0f}% of this month's bookings have a gclid "
+            f"attached — CPA/ROAS is being computed on Google's self-reported conversions, not "
+            f"actual leads. Check the Webflow/Calendly tracking snippet and /webhook/calendly.",
+            "View Bookings", "/bookings"
+        )
+
+
 def rule_clio_token_expiring():
     status = clio_conn.token_status()
     if not status["exists"]:
@@ -264,6 +303,8 @@ ALL_RULES = [
     rule_content_gap,
     rule_content_velocity,
     rule_keyword_queue_low,
+    rule_ads_impression_share_lost_budget,
+    rule_attribution_coverage_low,
     rule_clio_token_expiring,
 ]
 

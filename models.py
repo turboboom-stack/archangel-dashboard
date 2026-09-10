@@ -72,6 +72,91 @@ class GoogleAdsKeyword(db.Model):
     cpa = db.Column(db.Float, default=0)
 
 
+class GoogleAdsCampaignDaily(db.Model):
+    """Live Google Ads API campaign-level daily performance (google_ads_api_connector)."""
+    __tablename__ = "google_ads_campaign_daily"
+    __table_args__ = (db.UniqueConstraint("date", "campaign_id", name="uq_ads_campaign_daily"),)
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False)
+    campaign_id = db.Column(db.String(32), nullable=False)
+    campaign_name = db.Column(db.String(256))
+    location = db.Column(db.String(8))  # 'SD' / 'AV' / 'UNK'
+    status = db.Column(db.String(32))
+    channel_type = db.Column(db.String(64))
+    spend = db.Column(db.Float, default=0)
+    clicks = db.Column(db.Integer, default=0)
+    impressions = db.Column(db.Integer, default=0)
+    conversions = db.Column(db.Float, default=0)
+    conversion_value = db.Column(db.Float, default=0)
+    cpa = db.Column(db.Float, default=0)
+    ctr = db.Column(db.Float, default=0)
+    avg_cpc = db.Column(db.Float, default=0)
+    search_impression_share = db.Column(db.Float, nullable=True)
+    search_budget_lost_is = db.Column(db.Float, nullable=True)
+    search_rank_lost_is = db.Column(db.Float, nullable=True)
+    refreshed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class GoogleAdsAdGroupDaily(db.Model):
+    """Live Google Ads API ad-group-level daily performance."""
+    __tablename__ = "google_ads_adgroup_daily"
+    __table_args__ = (db.UniqueConstraint("date", "ad_group_id", name="uq_ads_adgroup_daily"),)
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False)
+    campaign_id = db.Column(db.String(32), nullable=False)
+    ad_group_id = db.Column(db.String(32), nullable=False)
+    ad_group_name = db.Column(db.String(256))
+    spend = db.Column(db.Float, default=0)
+    clicks = db.Column(db.Integer, default=0)
+    impressions = db.Column(db.Integer, default=0)
+    conversions = db.Column(db.Float, default=0)
+    cpa = db.Column(db.Float, default=0)
+    refreshed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class GoogleAdsKeywordDaily(db.Model):
+    """Live Google Ads API keyword-level daily performance, incl. quality score."""
+    __tablename__ = "google_ads_keyword_daily"
+    __table_args__ = (db.UniqueConstraint("date", "keyword_id", name="uq_ads_keyword_daily"),)
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False)
+    campaign_id = db.Column(db.String(32), nullable=False)
+    ad_group_id = db.Column(db.String(32), nullable=False)
+    keyword_id = db.Column(db.String(32), nullable=False)
+    keyword_text = db.Column(db.String(256))
+    match_type = db.Column(db.String(32))
+    quality_score = db.Column(db.Integer, nullable=True)
+    expected_ctr = db.Column(db.String(32), nullable=True)          # BELOW_AVERAGE / AVERAGE / ABOVE_AVERAGE
+    ad_relevance = db.Column(db.String(32), nullable=True)
+    landing_page_exp = db.Column(db.String(32), nullable=True)
+    impressions = db.Column(db.Integer, default=0)
+    clicks = db.Column(db.Integer, default=0)
+    cost = db.Column(db.Float, default=0)
+    conversions = db.Column(db.Float, default=0)
+    cpa = db.Column(db.Float, default=0)
+    refreshed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class GoogleAdsSearchTerm(db.Model):
+    """Live Google Ads API search-terms report — feeds negative-keyword/leakage skills."""
+    __tablename__ = "google_ads_search_terms"
+    __table_args__ = (
+        db.UniqueConstraint("date", "campaign_id", "ad_group_id", "search_term", name="uq_ads_search_term"),
+    )
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False)
+    campaign_id = db.Column(db.String(32), nullable=False)
+    ad_group_id = db.Column(db.String(32), nullable=False)
+    search_term = db.Column(db.String(512))
+    matched_keyword = db.Column(db.String(256), nullable=True)
+    match_type = db.Column(db.String(32), nullable=True)
+    clicks = db.Column(db.Integer, default=0)
+    impressions = db.Column(db.Integer, default=0)
+    cost = db.Column(db.Float, default=0)
+    conversions = db.Column(db.Float, default=0)
+    refreshed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class GmbInsight(db.Model):
     __tablename__ = "gmb_insights"
     id = db.Column(db.Integer, primary_key=True)

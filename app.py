@@ -1,8 +1,10 @@
 """Archangel Command Center — main Flask application."""
 
+import hashlib
+import hmac
 import os
 import re
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, jsonify, flash
 from models import db, CacheMetadata, ClioBooking, ActionItem, AdRecommendation
 import config
@@ -53,7 +55,8 @@ def _current_target():
 
 @app.route("/")
 def overview():
-    from connectors import webflow_connector, gmb_connector, gsc_connector, google_ads_connector, ga4_connector, clio_connector
+    from connectors import webflow_connector, gmb_connector, gsc_connector, google_ads_connector, \
+        google_ads_api_connector, ga4_connector, clio_connector
     from engines import action_items as ai
 
     if not db.session.query(ActionItem).filter_by(is_dismissed=False).first():
@@ -63,6 +66,7 @@ def overview():
     gmb_data = gmb_connector.get_cached()
     gsc_data = gsc_connector.get_cached()
     ads_data = google_ads_connector.get_cached()
+    ads_api_data = google_ads_api_connector.get_cached(days=14)
     ga4_data  = ga4_connector.get_cached()
     clio_data = clio_connector.get_cached()
 
@@ -74,9 +78,19 @@ def overview():
     )
 
     latest_snap = ads_data["snapshots"][-1] if ads_data["snapshots"] else None
+
+    # Prefer live campaign-level CPA once Ads API data exists; fall back to CSV snapshot.
+    live_cpa = None
+    if ads_api_data["campaigns"]:
+        total_spend = sum(c["spend"] for c in ads_api_data["campaigns"])
+        total_conv = sum(c["conversions"] for c in ads_api_data["campaigns"])
+        if total_conv > 0:
+            live_cpa = round(total_spend / total_conv, 2)
+
     sd_gmb = gmb_data.get("SD")
     top_items = ai.get_all()[:5]
-    sources = {k: CacheMetadata.get(k) for k in ("webflow", "gmb", "gsc", "google_ads", "ga4", "clio")}
+    sources = {k: CacheMetadata.get(k) for k in
+               ("webflow", "gmb", "gsc", "google_ads", "google_ads_api", "ga4", "clio")}
 
     return render_template(
         "overview.html",
@@ -84,6 +98,7 @@ def overview():
         bookings_count=bookings_count,
         posts_this_month=wf_data["published_this_month"],
         latest_snap=latest_snap,
+        live_cpa=live_cpa,
         sd_gmb=sd_gmb,
         gsc_summary=gsc_data["summary"],
         ga4=ga4_data,
@@ -98,10 +113,18 @@ def overview():
 
 @app.route("/paid-ads")
 def paid_ads():
-    from connectors import google_ads_connector
+    from connectors import google_ads_connector, google_ads_api_connector
+    from engines import attribution
     data = google_ads_connector.get_cached()
+    ads_api_data = google_ads_api_connector.get_cached(days=14)
     meta = CacheMetadata.get("google_ads")
-    return render_template("paid_ads.html", **data, meta=meta)
+    api_meta = CacheMetadata.get("google_ads_api")
+    return render_template(
+        "paid_ads.html", **data, meta=meta, api_meta=api_meta,
+        campaigns=ads_api_data["campaigns"],
+        wasted_search_terms=ads_api_data["wasted_search_terms"],
+        attribution=attribution.summary(days=30),
+    )
 
 
 @app.route("/gmb")
@@ -327,38 +350,24 @@ def approve_recommendation(rec_id):
 
     # Generate step-by-step Google Ads UI instructions via Claude
     try:
-        import json as _json
-        import urllib.request as _urllib
-        payload = {
-            "model": "claude-sonnet-4-6",
-            "max_tokens": 400,
-            "system": (
+        from engines import claude_client
+        rec.instructions = claude_client.call(
+            system_prompt=(
                 "You generate exact, numbered step-by-step instructions for making a specific "
                 "change in the Google Ads web interface at ads.google.com. Be precise about "
                 "menu names, button labels, and field values. Assume the user is already logged "
                 "in. Return only the numbered steps, no preamble or closing remarks."
             ),
-            "messages": [{"role": "user", "content": (
+            user_prompt=(
                 f"Generate step-by-step instructions to implement this Google Ads change:\n\n"
                 f"Category: {rec.category}\n"
                 f"Change: {rec.recommendation}\n"
                 f"Rationale: {rec.rationale}\n\n"
                 f"The account manages estate planning / probate campaigns in San Diego and Apple Valley, CA."
-            )}],
-        }
-        req = _urllib.Request(
-            "https://api.anthropic.com/v1/messages",
-            data=_json.dumps(payload).encode(),
-            headers={
-                "x-api-key": config.ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "Content-Type": "application/json",
-            },
-            method="POST",
+            ),
+            max_tokens=400,
+            cache_system=False,
         )
-        with _urllib.urlopen(req, timeout=60) as resp:
-            data = _json.loads(resp.read())
-        rec.instructions = data["content"][0]["text"].strip()
     except Exception as e:
         rec.instructions = f"(Could not generate instructions: {e})"
 
@@ -592,22 +601,76 @@ def clio_webhook():
     notes    = (body.get("message") or body.get("notes")
                 or body.get("description") or name)
 
-    booking = ClioBooking(
-        booking_date=date.today(),
-        source=source,
-        campaign=campaign,
-        notes=notes,
-        gclid=gclid or None,
-        email=email or None,
-        phone=phone or None,
+    from engines import attribution
+    booking, created = attribution.upsert_booking(
+        email=email or None, phone=phone or None, gclid=gclid or None,
+        campaign=campaign, source=source, notes=notes,
     )
-    db.session.add(booking)
-    db.session.commit()
 
     from engines import action_items as ai
     ai.run_all()
 
-    return jsonify({"received": True, "id": booking.id})
+    return jsonify({"received": True, "id": booking.id, "created": created})
+
+
+def _verify_calendly_signature(raw_body):
+    """Calendly signs webhooks as 'Calendly-Webhook-Signature: t=<ts>,v1=<hmac>'.
+    Verification is skipped (allowed through) if no signing key is configured —
+    set CALENDLY_SIGNING_KEY once the webhook subscription is created in Calendly."""
+    signing_key = os.environ.get("CALENDLY_SIGNING_KEY") or config._env.get("CALENDLY_SIGNING_KEY", "")
+    if not signing_key:
+        return True
+    header = request.headers.get("Calendly-Webhook-Signature", "")
+    parts = dict(p.split("=", 1) for p in header.split(",") if "=" in p)
+    t, v1 = parts.get("t"), parts.get("v1")
+    if not t or not v1:
+        return False
+    expected = hmac.new(
+        signing_key.encode(), f"{t}.{raw_body.decode()}".encode(), hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(expected, v1)
+
+
+@app.route("/webhook/calendly", methods=["POST"])
+def calendly_webhook():
+    if not _verify_calendly_signature(request.get_data()):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    body = request.get_json(silent=True) or {}
+    payload = body.get("payload", {}) or {}
+    tracking = payload.get("tracking") or {}
+
+    name = payload.get("name") or "Unknown"
+    email = payload.get("email") or ""
+    # gclid rides in utm_content — Calendly has no native gclid field. The Webflow-side
+    # tracking snippet (see attribution plan) must inject it there on the booking link.
+    gclid = tracking.get("utm_content") or ""
+    campaign = tracking.get("utm_campaign") or ""
+    source = tracking.get("utm_source") or "calendly"
+
+    phone = ""
+    for qa in (payload.get("questions_and_answers") or []):
+        if "phone" in (qa.get("question") or "").lower():
+            phone = qa.get("answer") or ""
+            break
+
+    from engines import attribution
+    booking, created = attribution.upsert_booking(
+        email=email or None, phone=phone or None, gclid=gclid or None,
+        campaign=campaign, source=source, notes=f"Calendly booking: {name}",
+    )
+
+    from engines import action_items as ai
+    ai.run_all()
+
+    return jsonify({"received": True, "id": booking.id, "created": created})
+
+
+@app.route("/api/attribution/summary")
+def attribution_summary():
+    from engines import attribution
+    days = int(request.args.get("days", 30))
+    return jsonify(attribution.summary(days=days))
 
 
 @app.route("/api/conversions/export")

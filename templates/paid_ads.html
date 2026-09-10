@@ -11,10 +11,102 @@
   </div>
 </div>
 
+{% if campaigns %}
+<!-- Live Campaign Performance (Google Ads API) -->
+<div class="card bg-black border-secondary mb-4">
+  <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+    <h6 class="mb-0"><i class="bi bi-broadcast text-success me-2"></i>Live Campaign Performance (last 14 days)</h6>
+    <span class="badge bg-success">live</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover table-sm mb-0">
+      <thead class="table-secondary text-dark">
+        <tr>
+          <th>Campaign</th>
+          <th>Location</th>
+          <th class="text-end">Spend</th>
+          <th class="text-end">Clicks</th>
+          <th class="text-end">Conv.</th>
+          <th class="text-end">CPA</th>
+          <th class="text-end">Search Impr. Share</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in campaigns %}
+        <tr>
+          <td>{{ c.campaign_name }}</td>
+          <td><span class="badge bg-secondary">{{ c.location }}</span></td>
+          <td class="text-end">${{ c.spend|round(2) }}</td>
+          <td class="text-end">{{ c.clicks }}</td>
+          <td class="text-end">{{ c.conversions|round(1) }}</td>
+          <td class="text-end {% if c.cpa > 150 %}text-danger{% elif c.cpa > 0 %}text-success{% endif %}">
+            {% if c.cpa > 0 %}${{ c.cpa|int }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end">
+            {% if c.search_impression_share is not none %}{{ (c.search_impression_share * 100)|round(0)|int }}%{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if wasted_search_terms %}
+<!-- Wasted Search Terms -->
+<div class="card bg-black border-secondary mb-4">
+  <div class="card-header border-secondary">
+    <h6 class="mb-0"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Search Terms — Clicks, No Conversions (last 14 days)</h6>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover table-sm mb-0">
+      <thead class="table-secondary text-dark">
+        <tr>
+          <th>Search Term</th>
+          <th class="text-end">Clicks</th>
+          <th class="text-end">Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in wasted_search_terms %}
+        <tr>
+          <td>{{ t.search_term }}</td>
+          <td class="text-end">{{ t.clicks }}</td>
+          <td class="text-end text-danger">${{ t.cost|round(2) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if attribution and attribution.total_bookings %}
+<div class="card bg-black border-secondary mb-4">
+  <div class="card-body d-flex flex-wrap gap-4 align-items-center">
+    <div>
+      <div class="text-muted small mb-1">gclid Attribution Coverage (30d)</div>
+      <div class="h4 fw-bold {% if attribution.gclid_coverage_pct >= 50 %}text-success{% elif attribution.gclid_coverage_pct >= 30 %}text-warning{% else %}text-danger{% endif %}">
+        {{ attribution.gclid_coverage_pct }}%
+      </div>
+      <div class="text-muted small">{{ attribution.attributed_bookings }} of {{ attribution.total_bookings }} bookings</div>
+    </div>
+    <div>
+      <div class="text-muted small mb-1">Attributed CPA</div>
+      <div class="h4 fw-bold text-light">
+        {% if attribution.attributed_cpa %}${{ attribution.attributed_cpa }}{% else %}—{% endif %}
+      </div>
+      <div class="text-muted small">spend ÷ bookings with gclid</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Upload Panel -->
 <div class="card bg-black border-warning mb-4">
   <div class="card-body">
-    <h6 class="text-warning mb-3"><i class="bi bi-upload me-2"></i>Upload Report</h6>
+    <h6 class="text-warning mb-3"><i class="bi bi-upload me-2"></i>Manual Upload (fallback)</h6>
     <p class="text-muted small mb-3">
       Export a keyword or campaign CSV from Google Ads, or save the weekly performance email as HTML and upload it here. The date range is read from the file automatically.
     </p>

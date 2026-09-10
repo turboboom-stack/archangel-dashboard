@@ -1,169 +1,53 @@
 """
-Ads Strategy Analyzer
-Reads Google Ads performance data from the DB, calls Claude API,
-and writes AdRecommendation rows directly to the DB.
+Ads Strategy Analyzer — thin dispatcher over the engines.ads_skills registry.
+Runs each skill, persists results as AdRecommendation rows tagged with which skill
+produced them (agent_version = "skill:<id>-<date>"), so /ad-strategy can show provenance.
 """
 
-import json
 import logging
 import threading
-import urllib.request
-import urllib.error
-from datetime import datetime, date, timedelta
+from datetime import date
 
 import config
+from engines import ads_skills
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-sonnet-4-6"
-CALENDLY_URL = "https://calendly.com/archangel-trust-cmartin/consultation"
-
-SYSTEM_PROMPT = """You are a Google Ads strategist managing campaigns for Archangel Trust, \
-an estate planning and probate law firm in California. Locations: San Diego and Apple Valley (High Desert). \
-Target CPA is under $150. Primary goal: drive consultation bookings via Calendly.
-
-San Diego budget is currently paused — do not recommend increasing San Diego spend. Direct any \
-budget-category recommendations toward Apple Valley or toward efficiency (bids, negatives, keywords) \
-within San Diego's existing budget instead.
-
-Campaign focus is shifting from probate to estate planning, wills, and living trusts — target \
-roughly a 90/10 split (90% estate planning/wills/trusts, 10% probate) across keyword and budget \
-recommendations. Don't recommend eliminating probate entirely, just reduce its weight relative to \
-estate planning content.
-
-You analyze performance data and generate specific, actionable recommendations. \
-Each recommendation must be directly implementable in Google Ads.
-
-Return a JSON array of 3-5 recommendation objects. Each object must have:
-- "category": one of "budget", "keywords", "bids", "negatives", "copy"
-- "priority": one of "high", "medium", "low"
-- "title": short action title (under 80 chars)
-- "recommendation": what to do, written as a clear instruction (1-2 sentences)
-- "rationale": data-backed reasoning referencing specific numbers from the data provided
-
-Return only the JSON array, no other text."""
-
-
-def _call_claude(api_key, user_prompt):
-    payload = {
-        "model": MODEL,
-        "max_tokens": 4096,
-        "system": SYSTEM_PROMPT,
-        "messages": [{"role": "user", "content": user_prompt}],
-    }
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=json.dumps(payload).encode(),
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=90) as resp:
-        data = json.loads(resp.read())
-    return data["content"][0]["text"].strip()
-
-
-def _build_prompt(snapshots, keywords):
-    lines = ["## Google Ads Performance Data\n"]
-
-    if snapshots:
-        lines.append("### Period Snapshots (most recent first)")
-        for s in snapshots[:6]:
-            period = ""
-            if s.period_start and s.period_end:
-                period = f"{s.period_start.strftime('%b %d')}–{s.period_end.strftime('%b %d')}"
-            lines.append(
-                f"- {period}: spend=${s.total_spend:.2f}, clicks={s.total_clicks}, "
-                f"conv={s.total_conversions:.1f}, CPA=${s.cpa:.2f}, impr={s.total_impressions}"
-            )
-    else:
-        lines.append("No snapshot data available yet.")
-
-    if keywords:
-        lines.append("\n### Top Keywords (most recent snapshot)")
-        for kw in keywords[:20]:
-            lines.append(
-                f"- \"{kw.keyword}\" [{kw.match_type}] | campaign: {kw.campaign} | "
-                f"clicks={kw.clicks}, conv={kw.conversions:.1f}, cost=${kw.cost:.2f}, CPA=${kw.cpa:.2f}"
-            )
-
-    target = config.MONTHLY_TARGETS.get(date.today().strftime("%B").lower(), config.MONTHLY_TARGETS["default"])
-    lines.append(f"\n### Targets")
-    lines.append(f"- Target CPA: under ${target['cpa_max']}")
-    lines.append(f"- Monthly booking goal: {target['bookings']}")
-    lines.append(f"\nToday: {date.today().isoformat()}")
-
-    return "\n".join(lines)
-
 
 def run_analysis(app):
-    """Run analysis in the given Flask app context. Returns (count, error_msg)."""
-    api_key = config.ANTHROPIC_API_KEY
-    if not api_key:
+    """Run all ads_skills in the given Flask app context. Returns (count, error_msg)."""
+    if not config.ANTHROPIC_API_KEY:
         return 0, "ANTHROPIC_API_KEY not configured"
 
     with app.app_context():
-        from models import db, GoogleAdsSnapshot, GoogleAdsKeyword, AdRecommendation
+        from models import db, AdRecommendation
 
-        snapshots = (
-            db.session.query(GoogleAdsSnapshot)
-            .order_by(GoogleAdsSnapshot.snapshot_date.desc())
-            .limit(10)
-            .all()
-        )
-
-        keywords = []
-        if snapshots:
-            latest_id = snapshots[0].id
-            keywords = (
-                db.session.query(GoogleAdsKeyword)
-                .filter_by(snapshot_id=latest_id)
-                .order_by(GoogleAdsKeyword.cost.desc())
-                .limit(30)
-                .all()
-            )
-
-        prompt = _build_prompt(snapshots, keywords)
-        logger.info("Calling Claude for ad strategy analysis...")
-
-        try:
-            raw = _call_claude(api_key, prompt)
-        except Exception as e:
-            logger.error(f"Claude API error: {e}")
-            return 0, str(e)
-
-        # Strip markdown fences if present
-        text = raw.strip()
-        if text.startswith("```"):
-            text = text.split("\n", 1)[-1]
-            text = text.rsplit("```", 1)[0].strip()
-
-        try:
-            recs = json.loads(text)
-        except json.JSONDecodeError as e:
-            logger.error(f"Could not parse Claude response as JSON: {e}\nRaw: {raw[:500]}")
-            return 0, f"Invalid JSON from Claude: {e}"
-
-        version = f"ads-analyzer-{date.today().isoformat()}"
+        today = date.today().isoformat()
         count = 0
-        for r in recs:
-            rec = AdRecommendation(
-                category=r.get("category", "general"),
-                priority=r.get("priority", "medium"),
-                title=r.get("title", ""),
-                recommendation=r.get("recommendation", ""),
-                rationale=r.get("rationale", ""),
-                agent_version=version,
-            )
-            db.session.add(rec)
-            count += 1
+        errors = []
+        for skill_id, module in ads_skills.SKILLS.items():
+            try:
+                recs = module.run()
+            except Exception as e:
+                logger.error(f"Skill {skill_id} failed: {e}")
+                errors.append(f"{skill_id}: {e}")
+                continue
+
+            version = f"skill:{skill_id}-{today}"
+            for r in recs:
+                db.session.add(AdRecommendation(
+                    category=r.get("category", "general"),
+                    priority=r.get("priority", "medium"),
+                    title=r.get("title", ""),
+                    recommendation=r.get("recommendation", ""),
+                    rationale=r.get("rationale", ""),
+                    agent_version=version,
+                ))
+                count += 1
 
         db.session.commit()
-        logger.info(f"Added {count} recommendations to DB.")
-        return count, None
+        logger.info(f"ads_skills: {count} recommendations added across {len(ads_skills.SKILLS)} skills.")
+        return count, ("; ".join(errors) if errors and count == 0 else None)
 
 
 _analysis_lock = threading.Lock()
