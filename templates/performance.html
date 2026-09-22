@@ -1,0 +1,670 @@
+{% extends "base.html" %}
+{% block title %}Performance — Archangel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h4 class="mb-0 text-warning fw-bold"><i class="bi bi-graph-up-arrow me-2"></i>Performance</h4>
+    <p class="text-muted small mb-0">How campaigns are doing, and what to change next.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="summaryBtn" onclick="generateSummary()">
+      <i class="bi bi-file-text me-1"></i>Generate Summary
+    </button>
+    <button type="button" class="btn btn-outline-warning btn-sm" id="runBtn" onclick="runAnalysis()">
+      <i class="bi bi-play-circle me-1"></i>Run Analysis
+    </button>
+  </div>
+</div>
+
+<!-- Channel Performance -->
+<div class="row g-3 mb-4">
+  {% if sd_gmb %}
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3 h-100">
+      <div class="text-muted small mb-1">San Diego GMB</div>
+      <div class="h4 fw-bold text-info mb-0">{{ sd_gmb.calls }}</div>
+      <div class="text-muted small">calls (28d)</div>
+    </div>
+  </div>
+  {% endif %}
+  {% if av_gmb %}
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3 h-100">
+      <div class="text-muted small mb-1">Apple Valley GMB</div>
+      <div class="h4 fw-bold text-info mb-0">{{ av_gmb.calls }}</div>
+      <div class="text-muted small">calls (28d)</div>
+    </div>
+  </div>
+  {% endif %}
+  {% if attribution and attribution.total_bookings %}
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3 h-100">
+      <div class="text-muted small mb-1">gclid Attribution</div>
+      <div class="h4 fw-bold mb-0 {% if attribution.gclid_coverage_pct >= 50 %}text-success{% elif attribution.gclid_coverage_pct >= 30 %}text-warning{% else %}text-danger{% endif %}">
+        {{ attribution.gclid_coverage_pct }}%
+      </div>
+      <div class="text-muted small">{{ attribution.attributed_bookings }} of {{ attribution.total_bookings }} bookings</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3 h-100">
+      <div class="text-muted small mb-1">Attributed CPA</div>
+      <div class="h4 fw-bold text-light mb-0">
+        {% if attribution.attributed_cpa %}${{ attribution.attributed_cpa }}{% else %}—{% endif %}
+      </div>
+      <div class="text-muted small">spend ÷ bookings with gclid</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% if campaigns %}
+<div class="card border-secondary mb-4">
+  <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+    <h6 class="mb-0"><i class="bi bi-broadcast text-success me-2"></i>Live Campaign Performance (last 14 days)</h6>
+    <span class="badge bg-success">live</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover table-sm mb-0">
+      <thead class="table-secondary text-dark">
+        <tr>
+          <th>Campaign</th>
+          <th>Location</th>
+          <th class="text-end">Spend</th>
+          <th class="text-end">Clicks</th>
+          <th class="text-end">Conv.</th>
+          <th class="text-end">CPA</th>
+          <th class="text-end">Search Impr. Share</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in campaigns %}
+        <tr>
+          <td>{{ c.campaign_name }}</td>
+          <td><span class="badge bg-secondary">{{ c.location }}</span></td>
+          <td class="text-end">${{ c.spend|round(2) }}</td>
+          <td class="text-end">{{ c.clicks }}</td>
+          <td class="text-end">{{ c.conversions|round(1) }}</td>
+          <td class="text-end {% if c.cpa > 150 %}text-danger{% elif c.cpa > 0 %}text-success{% endif %}">
+            {% if c.cpa > 0 %}${{ c.cpa|int }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end">
+            {% if c.search_impression_share is not none %}{{ (c.search_impression_share * 100)|round(0)|int }}%{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Recommendations -->
+<h5 class="mb-3 mt-5">
+  Pending Review
+  {% if pending %}
+  <span class="badge bg-warning text-dark ms-2">{{ pending|length }}</span>
+  {% endif %}
+</h5>
+
+{% if pending %}
+  {% for rec in pending %}
+  <div class="card bg-dark border-secondary mb-3" id="pending-{{ rec.id }}">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <span class="badge
+            {% if rec.priority == 'high' %}bg-danger
+            {% elif rec.priority == 'medium' %}bg-warning text-dark
+            {% else %}bg-secondary{% endif %}">
+            {{ rec.priority|upper }}
+          </span>
+          <span class="badge bg-secondary">{{ rec.category }}</span>
+          <strong>{{ rec.title }}</strong>
+          {% if rec.agent_version and rec.agent_version.startswith('skill:') %}
+          <span class="text-muted small">via {{ rec.agent_version[6:].rsplit('-', 3)[0]|replace('_', ' ') }}</span>
+          {% endif %}
+        </div>
+        <small class="text-muted text-nowrap ms-2">{{ rec.created_at.strftime('%b %d, %Y') }}</small>
+      </div>
+
+      <p class="mb-2">{{ rec.recommendation }}</p>
+
+      <div class="mb-3">
+        <a class="small text-muted text-decoration-none" data-bs-toggle="collapse" href="#rationale-{{ rec.id }}" role="button">
+          <i class="bi bi-chevron-down me-1"></i>Show reasoning
+        </a>
+        <div class="collapse mt-2" id="rationale-{{ rec.id }}">
+          <div class="card card-body bg-black border-secondary small text-muted">
+            {{ rec.rationale }}
+          </div>
+        </div>
+      </div>
+
+      <div id="actions-{{ rec.id }}">
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-success btn-sm" id="approve-btn-{{ rec.id }}" onclick="approvePending({{ rec.id }})">
+            <i class="bi bi-check-lg me-1"></i>Approve
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="decide({{ rec.id }}, 'reject')">
+            <i class="bi bi-x-lg me-1"></i>Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="card bg-dark border-secondary mb-4">
+    <div class="card-body text-center text-muted py-5">
+      <i class="bi bi-lightbulb fs-1 d-block mb-3"></i>
+      No pending recommendations.<br>
+      Run the analysis to generate suggestions from your latest ad data.
+    </div>
+  </div>
+{% endif %}
+
+<h5 class="mt-5 mb-3">
+  Awaiting Implementation
+  {% if awaiting %}
+  <span class="badge bg-info text-dark ms-2">{{ awaiting|length }}</span>
+  {% endif %}
+</h5>
+
+{% if awaiting %}
+  {% for rec in awaiting %}
+  <div class="card bg-dark border-info mb-3" id="awaiting-{{ rec.id }}">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <span class="badge bg-info text-dark">Approved</span>
+          <span class="badge bg-secondary">{{ rec.category }}</span>
+          <strong>{{ rec.title }}</strong>
+        </div>
+        <small class="text-muted text-nowrap ms-2">{{ rec.reviewed_at.strftime('%b %d, %Y') if rec.reviewed_at else '' }}</small>
+      </div>
+
+      <p class="small text-muted mb-3">{{ rec.recommendation }}</p>
+
+      {% if rec.instructions %}
+      <div class="bg-black rounded p-3 mb-3 border border-secondary">
+        <p class="small fw-bold text-warning mb-2"><i class="bi bi-list-ol me-1"></i>HOW TO MAKE THIS CHANGE IN GOOGLE ADS</p>
+        <pre class="small text-white mb-0 instructions-pre">{{ rec.instructions }}</pre>
+      </div>
+      {% endif %}
+
+      <div id="done-area-{{ rec.id }}">
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-success btn-sm" onclick="showDoneForm({{ rec.id }})">
+            <i class="bi bi-check2-circle me-1"></i>I've Done This
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="decide({{ rec.id }}, 'reject')">
+            Dismiss
+          </button>
+        </div>
+        <div id="done-form-{{ rec.id }}" class="mt-3 d-none">
+          <textarea id="done-notes-{{ rec.id }}" class="form-control form-control-sm bg-black text-white border-secondary mb-2"
+                    rows="2" placeholder="Briefly describe what you changed in Google Ads…"></textarea>
+          <div class="d-flex gap-2 align-items-center mb-2">
+            <label class="small text-muted mb-0 text-nowrap">Check results on:</label>
+            <input type="date" id="done-date-{{ rec.id }}"
+                   class="form-control form-control-sm bg-black text-white border-secondary"
+                   title="Date to check results"
+                   placeholder="YYYY-MM-DD">
+          </div>
+          <button type="button" class="btn btn-sm btn-success" onclick="submitDone({{ rec.id }})">Save</button>
+          <button type="button" class="btn btn-sm btn-link text-muted" onclick="hideDoneForm({{ rec.id }})">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <p class="text-muted small">No approved changes waiting. Approved items will appear here with step-by-step Google Ads instructions.</p>
+{% endif %}
+
+<hr class="border-secondary mt-5">
+<div class="d-flex justify-content-between align-items-center mb-3 mt-4">
+  <h5 class="mb-0">Change Log</h5>
+  {% if implemented %}
+  <span class="text-muted small">{{ implemented|length }} change{{ 's' if implemented|length != 1 else '' }} implemented</span>
+  {% endif %}
+</div>
+
+{% if implemented %}
+  {% for rec in implemented %}
+  {% set overdue = rec.follow_up_date and rec.follow_up_date < today and not rec.follow_up_notes %}
+  <div class="card mb-3 {% if overdue %}border-warning{% else %}border-secondary{% endif %} bg-dark">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-1">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <span class="badge bg-success">Implemented</span>
+          <span class="badge bg-secondary">{{ rec.category }}</span>
+          {% if overdue %}<span class="badge bg-warning text-dark">Follow-up overdue</span>{% endif %}
+          <strong>{{ rec.title }}</strong>
+        </div>
+        <small class="text-muted text-nowrap ms-2">
+          {{ rec.implemented_at.strftime('%b %d, %Y') if rec.implemented_at else '—' }}
+        </small>
+      </div>
+
+      {% if rec.implementation_notes %}
+      <p class="small text-muted mb-2"><em>What was done:</em> {{ rec.implementation_notes }}</p>
+      {% endif %}
+
+      <div class="row g-2 small mt-1">
+        <div class="col-auto">
+          <span class="text-muted">Check results:</span>
+          {% if rec.follow_up_date %}
+            <span class="{% if overdue %}text-warning fw-bold{% else %}text-info{% endif %}">
+              {{ rec.follow_up_date.strftime('%b %d, %Y') }}
+            </span>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if rec.follow_up_notes %}
+      <div class="mt-2 p-2 bg-black rounded small text-muted">
+        <strong class="text-white">Results:</strong> {{ rec.follow_up_notes }}
+      </div>
+      {% else %}
+      <div class="mt-3" id="followup-area-{{ rec.id }}">
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                onclick="showFollowUpForm({{ rec.id }})">
+          <i class="bi bi-journal-text me-1"></i>Log Results
+        </button>
+        <div id="followup-form-{{ rec.id }}" class="mt-2 d-none">
+          <textarea id="followup-text-{{ rec.id }}" class="form-control form-control-sm bg-black text-white border-secondary mb-2"
+                    rows="2" placeholder="What changed after this was implemented? Any performance impact?"></textarea>
+          <button type="button" class="btn btn-sm btn-success" onclick="saveFollowUp({{ rec.id }})">Save</button>
+          <button type="button" class="btn btn-sm btn-link text-muted" onclick="hideFollowUpForm({{ rec.id }})">Cancel</button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="text-muted small py-3">No implemented changes yet. Approved recommendations that the agent has acted on will appear here.</div>
+{% endif %}
+
+<!-- Detail: search terms, manual upload, legacy history -->
+<hr class="border-secondary mt-5">
+<h5 class="mb-3 text-muted">Detail</h5>
+
+{% if wasted_search_terms %}
+<div class="card bg-black border-secondary mb-4">
+  <div class="card-header border-secondary">
+    <h6 class="mb-0"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Search Terms — Clicks, No Conversions (last 14 days)</h6>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover table-sm mb-0">
+      <thead class="table-secondary text-dark">
+        <tr><th>Search Term</th><th class="text-end">Clicks</th><th class="text-end">Cost</th></tr>
+      </thead>
+      <tbody>
+        {% for t in wasted_search_terms %}
+        <tr>
+          <td>{{ t.search_term }}</td>
+          <td class="text-end">{{ t.clicks }}</td>
+          <td class="text-end text-danger">${{ t.cost|round(2) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card bg-black border-secondary mb-4">
+  <div class="card-body">
+    <h6 class="text-muted mb-3"><i class="bi bi-upload me-2"></i>Manual Upload (fallback)</h6>
+    <p class="text-muted small mb-3">
+      Export a keyword or campaign CSV from Google Ads, or save the weekly performance email as HTML and upload it here.
+    </p>
+    <div id="uploadZone" class="border border-secondary rounded p-4 text-center" style="cursor:pointer; border-style:dashed!important;"
+         onclick="document.getElementById('fileInput').click()"
+         ondragover="event.preventDefault(); this.classList.add('border-warning');"
+         ondragleave="this.classList.remove('border-warning');"
+         ondrop="handleDrop(event)">
+      <i class="bi bi-file-earmark-arrow-up fs-2 text-muted mb-2 d-block"></i>
+      <span class="text-muted">Drop CSV or HTML file here, or click to browse</span>
+    </div>
+    <input type="file" id="fileInput" accept=".csv,.html,.htm" class="d-none" onchange="uploadFile(this.files[0])">
+    <div id="uploadStatus" class="mt-2 small"></div>
+  </div>
+</div>
+
+{% if snapshots %}
+<div class="row g-4 mb-4">
+  <div class="col-md-6">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-header border-secondary"><h6 class="mb-0">Spend & Conversions (manual upload history)</h6></div>
+      <div class="card-body"><canvas id="spendChart" height="200"></canvas></div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-header border-secondary"><h6 class="mb-0">CPA Trend</h6></div>
+      <div class="card-body"><canvas id="cpaChart" height="200"></canvas></div>
+    </div>
+  </div>
+</div>
+
+{% if latest_keywords %}
+<div class="card bg-black border-secondary mb-4">
+  <div class="card-header border-secondary">
+    <h6 class="mb-0"><i class="bi bi-key me-2 text-warning"></i>Top Keywords (latest upload)</h6>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover table-sm mb-0">
+      <thead class="table-secondary text-dark">
+        <tr><th>Keyword</th><th>Campaign</th><th class="text-end">Clicks</th><th class="text-end">Conv.</th><th class="text-end">Cost</th><th class="text-end">CPA</th></tr>
+      </thead>
+      <tbody>
+        {% for kw in latest_keywords %}
+        <tr>
+          <td>{{ kw.keyword or '—' }}</td>
+          <td class="text-muted small">{{ kw.campaign or '—' }}</td>
+          <td class="text-end">{{ kw.clicks }}</td>
+          <td class="text-end">{{ kw.conversions|round(1) }}</td>
+          <td class="text-end">${{ kw.cost|round(2) }}</td>
+          <td class="text-end {% if kw.cpa > 150 %}text-danger{% elif kw.cpa > 0 %}text-success{% endif %}">
+            {% if kw.cpa > 0 %}${{ kw.cpa|int }}{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Summary Modal -->
+<div class="modal fade" id="summaryModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content bg-dark text-white border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">Weekly Summary</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="summaryLoading" class="text-center text-muted py-5 d-none">
+          <span class="spinner-border me-2"></span>Generating summary…
+        </div>
+        <pre id="summaryText" class="bg-black rounded p-3 small text-white d-none"></pre>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-warning d-none" id="copyBtn" onclick="copySummary()">
+          <i class="bi bi-clipboard me-1"></i>Copy
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const allSnapshots = [
+  {% for s in snapshots %}
+  {
+    "snapshot_date": {{ s.snapshot_date.isoformat() | tojson }},
+    "period_start":  {{ (s.period_start.isoformat() if s.period_start else None) | tojson }},
+    "period_end":    {{ (s.period_end.isoformat() if s.period_end else None) | tojson }},
+    "total_spend":       {{ s.total_spend }},
+    "total_conversions": {{ s.total_conversions }},
+    "cpa":               {{ s.cpa }}
+  }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+function periodLabel(s) {
+  if (s.period_start && s.period_end) {
+    const start = new Date(s.period_start + 'T00:00:00');
+    const end = new Date(s.period_end + 'T00:00:00');
+    const mo = d => d.toLocaleString('en-US', {month: 'short'});
+    return `${mo(start)} ${start.getDate()} – ${mo(end)} ${end.getDate()}`;
+  }
+  return s.snapshot_date;
+}
+
+let spendChart, cpaChart;
+
+function buildCharts(snaps) {
+  const spendEl = document.getElementById('spendChart');
+  const cpaEl = document.getElementById('cpaChart');
+  if (!spendEl || !cpaEl) return;
+
+  const labels = snaps.map(periodLabel);
+  const spendData = snaps.map(s => s.total_spend);
+  const convData  = snaps.map(s => s.total_conversions);
+  const cpaData   = snaps.map(s => s.cpa);
+
+  if (spendChart) spendChart.destroy();
+  if (cpaChart)   cpaChart.destroy();
+  if (snaps.length === 0) return;
+
+  spendChart = new Chart(spendEl, {
+    type: 'line',
+    data: { labels, datasets: [
+      lineDataset('Spend ($)', spendData, '#C9A227', { yAxisID: 'y' }),
+      lineDataset('Conversions', convData, '#4C7A63', { yAxisID: 'y1' }),
+    ]},
+    options: { ...darkChartOptions(), scales: { y: darkAxis('$', 'left'), y1: darkAxis('conv', 'right') } }
+  });
+
+  cpaChart = new Chart(cpaEl, {
+    type: 'line',
+    data: { labels, datasets: [
+      lineDataset('CPA ($)', cpaData, '#B8563F', {}),
+      { label: 'Target ($150)', data: snaps.map(() => 150), borderColor: '#4C7A63',
+        borderDash: [6, 4], borderWidth: 2, pointRadius: 0, tension: 0, fill: false },
+    ]},
+    options: { ...darkChartOptions(), scales: { y: darkAxis('$', 'left') } }
+  });
+}
+
+buildCharts(allSnapshots);
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('border-warning');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFile(file);
+}
+
+function fmtDate(iso) {
+  if (!iso) return null;
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleString('en-US', {month: 'short', day: 'numeric'});
+}
+
+function uploadFile(file) {
+  if (!file) return;
+  const status = document.getElementById('uploadStatus');
+  status.innerHTML = '<span class="text-warning">Uploading...</span>';
+  const fd = new FormData();
+  fd.append('report_file', file);
+  fetch('/api/ads/upload', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        let periodStr = '';
+        if (data.period_start && data.period_end) {
+          periodStr = `${fmtDate(data.period_start)} – ${fmtDate(data.period_end)} · `;
+        }
+        status.innerHTML = `<span class="text-success">✓ Uploaded: ${periodStr}$${data.spend.toFixed(2)} spend · $${data.cpa.toFixed(2)} CPA</span>`;
+        setTimeout(() => location.reload(), 1800);
+      } else {
+        status.innerHTML = `<span class="text-danger">Error: ${data.error}</span>`;
+      }
+    })
+    .catch(e => { status.innerHTML = `<span class="text-danger">${e}</span>`; });
+}
+
+async function runAnalysis() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analyzing…';
+
+  try {
+    const resp = await fetch('/api/recommendations/analyze', { method: 'POST' });
+    const data = await resp.json();
+    if (resp.status === 409) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-play-circle me-1"></i>Run Analysis';
+      alert('Analysis is already running. Check back in a moment.');
+      return;
+    }
+    if (!resp.ok) throw new Error(data.error || 'Unknown error');
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Running…';
+    const start = Date.now();
+    const poll = setInterval(async () => {
+      if (Date.now() - start > 240000) {
+        clearInterval(poll);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-circle me-1"></i>Run Analysis';
+        alert('Analysis timed out. Check back shortly.');
+        return;
+      }
+      const check = await fetch('/api/recommendations');
+      const recs = await check.json();
+      const pending = recs.filter(r => r.status === 'pending');
+      if (pending.length > 0) {
+        clearInterval(poll);
+        location.reload();
+      }
+    }, 3000);
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-play-circle me-1"></i>Run Analysis';
+    alert('Error: ' + e.message);
+  }
+}
+
+async function generateSummary() {
+  const btn = document.getElementById('summaryBtn');
+  const modal = new bootstrap.Modal(document.getElementById('summaryModal'));
+  const loading = document.getElementById('summaryLoading');
+  const textEl = document.getElementById('summaryText');
+  const copyBtn = document.getElementById('copyBtn');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating…';
+  textEl.classList.add('d-none');
+  copyBtn.classList.add('d-none');
+  loading.classList.remove('d-none');
+  modal.show();
+
+  try {
+    const resp = await fetch('/api/summary/generate', { method: 'POST' });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Unknown error');
+    textEl.textContent = data.summary;
+    loading.classList.add('d-none');
+    textEl.classList.remove('d-none');
+    copyBtn.classList.remove('d-none');
+  } catch (e) {
+    loading.classList.add('d-none');
+    textEl.textContent = 'Error generating summary: ' + e.message;
+    textEl.classList.remove('d-none');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-file-text me-1"></i>Generate Summary';
+  }
+}
+
+function copySummary() {
+  const text = document.getElementById('summaryText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Copied!';
+    setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard me-1"></i>Copy'; }, 2000);
+  });
+}
+
+async function approvePending(id) {
+  const btn = document.getElementById('approve-btn-' + id);
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Getting instructions…';
+
+  try {
+    const resp = await fetch(`/api/recommendations/${id}/approve`, { method: 'POST' });
+    if (!resp.ok) throw new Error(await resp.text());
+    location.reload();
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Approve';
+    alert('Error: ' + e.message);
+  }
+}
+
+function showDoneForm(id) {
+  document.getElementById('done-form-' + id).classList.remove('d-none');
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  document.getElementById('done-date-' + id).value = d.toISOString().split('T')[0];
+}
+
+function hideDoneForm(id) {
+  document.getElementById('done-form-' + id).classList.add('d-none');
+}
+
+async function submitDone(id) {
+  const notes = document.getElementById('done-notes-' + id).value.trim();
+  const followUp = document.getElementById('done-date-' + id).value;
+  const resp = await fetch(`/api/recommendations/${id}/implement`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ implementation_notes: notes, follow_up_date: followUp }),
+  });
+  if (resp.ok) location.reload();
+  else alert('Error saving. Please try again.');
+}
+
+function showFollowUpForm(id) {
+  document.getElementById('followup-form-' + id).classList.remove('d-none');
+}
+
+function hideFollowUpForm(id) {
+  document.getElementById('followup-form-' + id).classList.add('d-none');
+}
+
+async function saveFollowUp(id) {
+  const notes = document.getElementById('followup-text-' + id).value.trim();
+  if (!notes) return;
+  const resp = await fetch(`/api/recommendations/${id}/follow-up`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notes }),
+  });
+  if (resp.ok) location.reload();
+  else alert('Error saving follow-up.');
+}
+
+async function decide(id, action) {
+  const card = document.getElementById('pending-' + id) || document.getElementById('awaiting-' + id);
+  const btn = card.querySelector('button[onclick*="' + action + '"]') || card.querySelector('button[onclick*="reject"]');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+  try {
+    const resp = await fetch(`/api/recommendations/${id}/${action}`, { method: 'POST' });
+    if (!resp.ok) throw new Error(await resp.text());
+    card.style.transition = 'opacity 0.4s';
+    card.style.opacity = '0';
+    setTimeout(() => { card.remove(); location.reload(); }, 400);
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = action === 'approve' ? '<i class="bi bi-check-lg me-1"></i>Approve' : '<i class="bi bi-x-lg me-1"></i>Reject';
+    alert('Error: ' + e.message);
+  }
+}
+</script>
+{% endblock %}

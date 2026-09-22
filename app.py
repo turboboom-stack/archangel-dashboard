@@ -5,7 +5,7 @@ import hmac
 import os
 import re
 from datetime import datetime, date, timedelta
-from flask import Flask, render_template, request, jsonify, flash
+from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
 from models import db, CacheMetadata, ClioBooking, ActionItem, AdRecommendation
 import config
 
@@ -151,17 +151,31 @@ def generate_briefing():
 
 @app.route("/paid-ads")
 def paid_ads():
-    from connectors import google_ads_connector, google_ads_api_connector
+    return redirect(url_for("performance"))
+
+
+@app.route("/performance")
+def performance():
+    from connectors import google_ads_connector, google_ads_api_connector, gmb_connector
     from engines import attribution
     data = google_ads_connector.get_cached()
     ads_api_data = google_ads_api_connector.get_cached(days=14)
+    gmb_data = gmb_connector.get_cached()
     meta = CacheMetadata.get("google_ads")
     api_meta = CacheMetadata.get("google_ads_api")
+
+    pending     = db.session.query(AdRecommendation).filter_by(status="pending").order_by(AdRecommendation.created_at.desc()).all()
+    awaiting    = db.session.query(AdRecommendation).filter_by(status="approved").order_by(AdRecommendation.reviewed_at.desc()).all()
+    implemented = db.session.query(AdRecommendation).filter_by(status="implemented").order_by(AdRecommendation.implemented_at.desc()).all()
+
     return render_template(
-        "paid_ads.html", **data, meta=meta, api_meta=api_meta,
+        "performance.html", **data, meta=meta, api_meta=api_meta,
         campaigns=ads_api_data["campaigns"],
         wasted_search_terms=ads_api_data["wasted_search_terms"],
         attribution=attribution.summary(days=30),
+        sd_gmb=gmb_data.get("SD"), av_gmb=gmb_data.get("AV"),
+        pending=pending, awaiting=awaiting, implemented=implemented,
+        today=date.today(),
     )
 
 
@@ -238,12 +252,7 @@ def guide():
 
 @app.route("/ad-strategy")
 def ad_strategy():
-    today    = date.today()
-    pending     = db.session.query(AdRecommendation).filter_by(status="pending").order_by(AdRecommendation.created_at.desc()).all()
-    awaiting    = db.session.query(AdRecommendation).filter_by(status="approved").order_by(AdRecommendation.reviewed_at.desc()).all()
-    implemented = db.session.query(AdRecommendation).filter_by(status="implemented").order_by(AdRecommendation.implemented_at.desc()).all()
-    return render_template("ad_strategy.html", pending=pending, awaiting=awaiting,
-                           implemented=implemented, today=today)
+    return redirect(url_for("performance"))
 
 
 # ── API endpoints ─────────────────────────────────────────────────────────────

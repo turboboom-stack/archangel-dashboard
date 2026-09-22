@@ -51,7 +51,7 @@ def run():
             msg = f"Daily {label} {direction} to {v:.2f} on {d.isoformat()} ({z:+.1f} std dev from the 3-week mean)."
             db.session.add(ActionItem(
                 severity="warning", category="ads", rule_id=f"ADS_ANOMALY_{label.upper()}",
-                message=msg, cta_text="View Paid Ads", cta_url="/paid-ads",
+                message=msg, cta_text="View Paid Ads", cta_url="/performance",
             ))
             items.append({
                 "category": "alerts",

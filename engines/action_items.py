@@ -44,7 +44,7 @@ def rule_ads_high_cpa():
         return _item(
             "critical", "ads", "ADS_HIGH_CPA",
             f"Google Ads CPA is ${snap.cpa:.0f} — target is <$150. Pause poor keywords and review match types.",
-            "View Paid Ads", "/paid-ads"
+            "View Paid Ads", "/performance"
         )
 
 
@@ -58,14 +58,14 @@ def rule_ads_no_data():
         return _item(
             "warning", "ads", "ADS_NO_DATA",
             "No Google Ads data uploaded yet. Export the weekly performance report and upload it.",
-            "Upload Report", "/paid-ads"
+            "Upload Report", "/performance"
         )
     days = (date.today() - snap.snapshot_date).days
     if days >= 10:
         return _item(
             "warning", "ads", "ADS_NO_DATA",
             f"Google Ads data is {days} days old. Upload a fresh weekly report.",
-            "Upload Report", "/paid-ads"
+            "Upload Report", "/performance"
         )
 
 
@@ -249,7 +249,7 @@ def rule_ads_impression_share_lost_budget():
             "opportunity", "ads", "ADS_IS_LOST_BUDGET_AV",
             f"Apple Valley is losing {avg_lost*100:.0f}% of impression share to budget limits "
             f"(14-day avg). There's headroom to spend more productively here.",
-            "View Paid Ads", "/paid-ads"
+            "View Paid Ads", "/performance"
         )
 
 
