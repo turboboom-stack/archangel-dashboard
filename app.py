@@ -2,6 +2,7 @@
 
 import hashlib
 import hmac
+import json
 import os
 import re
 from datetime import datetime, date, timedelta
@@ -137,7 +138,77 @@ def overview():
 
 @app.route("/consultant")
 def consultant():
-    return render_template("consultant_placeholder.html")
+    from models import CampaignPackage
+    packages = db.session.query(CampaignPackage).order_by(CampaignPackage.created_at.desc()).limit(10).all()
+    return render_template("consultant.html", packages=packages)
+
+
+@app.route("/consultant/<int:pkg_id>")
+def consultant_review(pkg_id):
+    from models import CampaignPackage
+    pkg = db.session.get(CampaignPackage, pkg_id)
+    if not pkg:
+        return jsonify({"error": "Not found"}), 404
+    return render_template(
+        "consultant_review.html", pkg=pkg,
+        keywords=json.loads(pkg.keywords_json or "[]"),
+        headlines=json.loads(pkg.headlines_json or "[]"),
+        descriptions=json.loads(pkg.descriptions_json or "[]"),
+    )
+
+
+@app.route("/api/consultant/generate", methods=["POST"])
+def generate_campaign_package():
+    from engines import campaign_builder
+    data = request.get_json() or {}
+
+    try:
+        budget_monthly = float(data.get("budget_monthly", 0))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Invalid budget"}), 400
+
+    if budget_monthly <= 0:
+        return jsonify({"ok": False, "error": "Budget must be greater than 0"}), 400
+    if not data.get("goal"):
+        return jsonify({"ok": False, "error": "Goal is required"}), 400
+    if not data.get("location"):
+        return jsonify({"ok": False, "error": "Location is required"}), 400
+
+    pkg, error = campaign_builder.generate(
+        goal=data.get("goal"),
+        goal_freeform=data.get("goal_freeform", ""),
+        budget_monthly=budget_monthly,
+        location=data.get("location"),
+        keyword_direction=data.get("keyword_direction", ""),
+        landing_page_preference=data.get("landing_page_preference", ""),
+    )
+    if error:
+        return jsonify({"ok": False, "error": error}), 500
+    return jsonify({"ok": True, "id": pkg.id})
+
+
+@app.route("/api/consultant/<int:pkg_id>/approve", methods=["POST"])
+def approve_campaign_package(pkg_id):
+    from models import CampaignPackage
+    pkg = db.session.get(CampaignPackage, pkg_id)
+    if not pkg:
+        return jsonify({"error": "Not found"}), 404
+    pkg.status = "approved"
+    pkg.reviewed_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({"ok": True, "status": pkg.status})
+
+
+@app.route("/api/consultant/<int:pkg_id>/reject", methods=["POST"])
+def reject_campaign_package(pkg_id):
+    from models import CampaignPackage
+    pkg = db.session.get(CampaignPackage, pkg_id)
+    if not pkg:
+        return jsonify({"error": "Not found"}), 404
+    pkg.status = "rejected"
+    pkg.reviewed_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({"ok": True, "status": pkg.status})
 
 
 @app.route("/api/briefing/generate", methods=["POST"])

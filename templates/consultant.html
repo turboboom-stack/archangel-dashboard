@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}Ad Consultant — Archangel{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <h4 class="mb-0 text-warning fw-bold"><i class="bi bi-stars me-2"></i>Ad Consultant</h4>
+  <p class="text-muted small mb-0">Answer a few questions and get a complete campaign package to review — nothing goes live until you approve it.</p>
+</div>
+
+<div class="card border-secondary mb-4" style="max-width: 640px;">
+  <div class="card-body p-4 p-md-5">
+
+    <!-- Step indicator -->
+    <div class="d-flex justify-content-between mb-4" id="stepIndicator">
+      <span class="step-dot active" data-step="1">1<span class="step-label">Goal</span></span>
+      <span class="step-dot" data-step="2">2<span class="step-label">Budget</span></span>
+      <span class="step-dot" data-step="3">3<span class="step-label">Location</span></span>
+      <span class="step-dot" data-step="4">4<span class="step-label">Keywords</span></span>
+      <span class="step-dot" data-step="5">5<span class="step-label">Landing Page</span></span>
+    </div>
+
+    <div id="wizardError" class="alert alert-secondary d-none small"></div>
+
+    <!-- Step 1: Goal -->
+    <div class="wizard-step" data-step="1">
+      <h5 class="mb-3">What's the goal of this campaign?</h5>
+      <select class="form-select bg-dark text-light border-secondary mb-3" id="goalSelect">
+        <option value="more_consultations">Drive more consultation bookings</option>
+        <option value="brand_awareness">Build brand awareness in a new area</option>
+        <option value="specific_service">Promote a specific service</option>
+        <option value="other">Other</option>
+      </select>
+      <label class="form-label small text-muted">Anything else worth knowing? (optional)</label>
+      <textarea class="form-control bg-dark text-light border-secondary" id="goalFreeform" rows="3"
+                placeholder="e.g. we just started offering trust administration and want to test demand"></textarea>
+    </div>
+
+    <!-- Step 2: Budget -->
+    <div class="wizard-step d-none" data-step="2">
+      <h5 class="mb-3">What's the monthly budget?</h5>
+      <div class="d-flex gap-2 mb-3 flex-wrap">
+        <button type="button" class="btn btn-sm btn-outline-secondary budget-chip" data-value="500">$500</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary budget-chip" data-value="1000">$1,000</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary budget-chip" data-value="2000">$2,000</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary budget-chip" data-value="3000">$3,000</button>
+      </div>
+      <label class="form-label small text-muted">Or enter a custom amount</label>
+      <div class="input-group" style="max-width: 220px;">
+        <span class="input-group-text bg-dark border-secondary text-muted">$</span>
+        <input type="number" class="form-control bg-dark text-light border-secondary" id="budgetInput" min="1" step="50" placeholder="1500">
+      </div>
+    </div>
+
+    <!-- Step 3: Location -->
+    <div class="wizard-step d-none" data-step="3">
+      <h5 class="mb-3">Which location is this for?</h5>
+      <div class="d-flex flex-column gap-2">
+        <label class="btn btn-outline-secondary text-start location-option" data-value="AV">
+          <input type="radio" name="location" value="AV" class="d-none"> Apple Valley
+        </label>
+        <label class="btn btn-outline-secondary text-start location-option" data-value="SD">
+          <input type="radio" name="location" value="SD" class="d-none"> San Diego
+          <span class="badge bg-secondary ms-2">budget currently paused</span>
+        </label>
+        <label class="btn btn-outline-secondary text-start location-option" data-value="BOTH">
+          <input type="radio" name="location" value="BOTH" class="d-none"> Both
+        </label>
+      </div>
+    </div>
+
+    <!-- Step 4: Keywords -->
+    <div class="wizard-step d-none" data-step="4">
+      <h5 class="mb-3">Any keyword direction?</h5>
+      <p class="text-muted small">Optional — the consultant will suggest keywords either way. Give it a nudge if you have something specific in mind.</p>
+      <textarea class="form-control bg-dark text-light border-secondary" id="keywordInput" rows="3"
+                placeholder="e.g. focus on living trusts and wills, keep probate light"></textarea>
+    </div>
+
+    <!-- Step 5: Landing page -->
+    <div class="wizard-step d-none" data-step="5">
+      <h5 class="mb-3">Where should the ads send people?</h5>
+      <p class="text-muted small">Optional — leave blank and the consultant will suggest a page from the site.</p>
+      <input type="text" class="form-control bg-dark text-light border-secondary" id="landingInput"
+             placeholder="e.g. the Apple Valley landing page, or Contact">
+    </div>
+
+    <!-- Nav buttons -->
+    <div class="d-flex justify-content-between mt-4">
+      <button type="button" class="btn btn-outline-secondary" id="backBtn" onclick="wizardBack()" disabled>Back</button>
+      <button type="button" class="btn btn-warning" id="nextBtn" onclick="wizardNext()">Next</button>
+      <button type="button" class="btn btn-warning d-none" id="generateBtn" onclick="wizardGenerate()">
+        <i class="bi bi-stars me-1"></i>Generate My Campaign
+      </button>
+    </div>
+  </div>
+</div>
+
+{% if packages %}
+<h6 class="text-muted mb-3 mt-5">Recent Packages</h6>
+<div class="table-responsive" style="max-width: 800px;">
+  <table class="table table-dark table-hover table-sm mb-0">
+    <thead class="table-secondary text-dark">
+      <tr><th>Campaign</th><th>Location</th><th class="text-end">Budget</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for p in packages %}
+      <tr>
+        <td>{{ p.campaign_name }}</td>
+        <td><span class="badge bg-secondary">{{ p.location }}</span></td>
+        <td class="text-end">${{ p.budget_monthly|int }}/mo</td>
+        <td>
+          {% if p.status == 'approved' %}<span class="badge bg-success">Approved</span>
+          {% elif p.status == 'rejected' %}<span class="badge bg-secondary">Rejected</span>
+          {% else %}<span class="badge bg-warning text-dark">Draft</span>{% endif %}
+        </td>
+        <td><a href="/consultant/{{ p.id }}" class="small">Review</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .step-dot {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    width: 32px; height: 32px; border-radius: 50%; background: var(--arc-surface-2);
+    color: var(--arc-muted); font-size: 0.8rem; font-weight: 600;
+    align-items: center; justify-content: center; position: relative;
+    transition: background 0.25s, color 0.25s;
+  }
+  .step-dot.active, .step-dot.done { background: var(--arc-accent); color: #101A2E; }
+  .step-label {
+    position: absolute; top: 38px; font-size: 0.65rem; font-weight: 400;
+    color: var(--arc-muted); white-space: nowrap;
+  }
+  .wizard-step { animation: arc-fade-in 0.3s ease; }
+  @keyframes arc-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .location-option.active, .budget-chip.active {
+    background-color: var(--arc-accent) !important; border-color: var(--arc-accent) !important; color: #101A2E !important;
+  }
+</style>
+<script>
+let currentStep = 1;
+const TOTAL_STEPS = 5;
+const answers = { goal: 'more_consultations', goal_freeform: '', budget_monthly: null, location: null, keyword_direction: '', landing_page_preference: '' };
+
+function showStep(n) {
+  document.querySelectorAll('.wizard-step').forEach(el => {
+    el.classList.toggle('d-none', parseInt(el.dataset.step) !== n);
+  });
+  document.querySelectorAll('.step-dot').forEach(el => {
+    const s = parseInt(el.dataset.step);
+    el.classList.toggle('active', s === n);
+    el.classList.toggle('done', s < n);
+  });
+  document.getElementById('backBtn').disabled = (n === 1);
+  document.getElementById('nextBtn').classList.toggle('d-none', n === TOTAL_STEPS);
+  document.getElementById('generateBtn').classList.toggle('d-none', n !== TOTAL_STEPS);
+}
+
+function validateStep(n) {
+  if (n === 2 && !answers.budget_monthly) {
+    showError('Enter a budget before continuing.');
+    return false;
+  }
+  if (n === 3 && !answers.location) {
+    showError('Pick a location before continuing.');
+    return false;
+  }
+  return true;
+}
+
+function showError(msg) {
+  const el = document.getElementById('wizardError');
+  el.textContent = msg;
+  el.classList.remove('d-none');
+}
+
+function clearError() {
+  document.getElementById('wizardError').classList.add('d-none');
+}
+
+function captureStep(n) {
+  if (n === 1) {
+    answers.goal = document.getElementById('goalSelect').value;
+    answers.goal_freeform = document.getElementById('goalFreeform').value.trim();
+  } else if (n === 4) {
+    answers.keyword_direction = document.getElementById('keywordInput').value.trim();
+  } else if (n === 5) {
+    answers.landing_page_preference = document.getElementById('landingInput').value.trim();
+  }
+}
+
+function wizardNext() {
+  clearError();
+  captureStep(currentStep);
+  if (!validateStep(currentStep)) return;
+  currentStep = Math.min(currentStep + 1, TOTAL_STEPS);
+  showStep(currentStep);
+}
+
+function wizardBack() {
+  clearError();
+  currentStep = Math.max(currentStep - 1, 1);
+  showStep(currentStep);
+}
+
+document.querySelectorAll('.budget-chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.budget-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    answers.budget_monthly = parseFloat(btn.dataset.value);
+    document.getElementById('budgetInput').value = btn.dataset.value;
+  });
+});
+document.getElementById('budgetInput').addEventListener('input', (e) => {
+  document.querySelectorAll('.budget-chip').forEach(b => b.classList.remove('active'));
+  answers.budget_monthly = parseFloat(e.target.value) || null;
+});
+
+document.querySelectorAll('.location-option').forEach(label => {
+  label.addEventListener('click', () => {
+    document.querySelectorAll('.location-option').forEach(l => l.classList.remove('active'));
+    label.classList.add('active');
+    answers.location = label.dataset.value;
+  });
+});
+
+async function wizardGenerate() {
+  captureStep(5);
+  clearError();
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Building your campaign…';
+
+  try {
+    const resp = await fetch('/api/consultant/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(answers),
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Something went wrong');
+    window.location.href = '/consultant/' + data.id;
+  } catch (e) {
+    showError('Error: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-stars me-1"></i>Generate My Campaign';
+  }
+}
+
+showStep(1);
+</script>
+{% endblock %}

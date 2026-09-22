@@ -259,6 +259,34 @@ class Ga4Summary(db.Model):
     top_pages_json       = db.Column(db.Text, default="[]")
 
 
+class CampaignPackage(db.Model):
+    __tablename__ = "campaign_packages"
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Wizard inputs
+    goal = db.Column(db.String(64))
+    goal_freeform = db.Column(db.Text, nullable=True)
+    budget_monthly = db.Column(db.Float)
+    location = db.Column(db.String(8))  # SD / AV / BOTH
+    keyword_direction = db.Column(db.Text, nullable=True)
+    landing_page_preference = db.Column(db.Text, nullable=True)
+
+    # Generated output
+    campaign_name = db.Column(db.String(256))
+    summary = db.Column(db.Text)
+    keywords_json = db.Column(db.Text, default="[]")       # [{"keyword": "...", "match_type": "..."}]
+    headlines_json = db.Column(db.Text, default="[]")      # ["...", ...]
+    descriptions_json = db.Column(db.Text, default="[]")   # ["...", ...]
+    budget_breakdown = db.Column(db.Text)
+    targeting = db.Column(db.Text)
+    landing_page_suggestion = db.Column(db.Text)
+    instructions = db.Column(db.Text)
+
+    status = db.Column(db.String(20), default="draft")  # draft / approved / rejected
+    reviewed_at = db.Column(db.DateTime, nullable=True)
+
+
 class DailyBriefing(db.Model):
     __tablename__ = "daily_briefings"
     id = db.Column(db.Integer, primary_key=True)

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}{{ pkg.campaign_name }} — Archangel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div>
+    <a href="/consultant" class="text-muted small text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Ad Consultant</a>
+    <h4 class="mb-0 mt-1 text-warning fw-bold">{{ pkg.campaign_name }}</h4>
+    <div class="d-flex gap-2 align-items-center mt-1">
+      <span class="badge bg-secondary">{{ pkg.location }}</span>
+      <span class="text-muted small">${{ pkg.budget_monthly|int }}/mo</span>
+      {% if pkg.status == 'approved' %}<span class="badge bg-success">Approved</span>
+      {% elif pkg.status == 'rejected' %}<span class="badge bg-secondary">Rejected</span>
+      {% else %}<span class="badge bg-warning text-dark">Draft</span>{% endif %}
+    </div>
+  </div>
+  {% if pkg.status == 'draft' %}
+  <div class="d-flex gap-2" id="reviewActions">
+    <button type="button" class="btn btn-success btn-sm" onclick="reviewDecide('approve')">
+      <i class="bi bi-check-lg me-1"></i>Approve
+    </button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="reviewDecide('reject')">
+      <i class="bi bi-x-lg me-1"></i>Reject
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card border-secondary mb-4">
+  <div class="card-body">
+    <h6 class="text-muted mb-2">Summary</h6>
+    <p class="mb-0">{{ pkg.summary }}</p>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-6">
+    <div class="card border-secondary h-100">
+      <div class="card-header border-secondary"><h6 class="mb-0"><i class="bi bi-key me-2 text-warning"></i>Keywords</h6></div>
+      <div class="table-responsive">
+        <table class="table table-dark table-sm mb-0">
+          <thead class="table-secondary text-dark"><tr><th>Keyword</th><th>Match Type</th></tr></thead>
+          <tbody>
+            {% for kw in keywords %}
+            <tr><td>{{ kw.keyword }}</td><td class="text-muted small">{{ kw.match_type }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card border-secondary h-100">
+      <div class="card-header border-secondary"><h6 class="mb-0"><i class="bi bi-chat-square-text me-2 text-warning"></i>Ad Copy</h6></div>
+      <div class="card-body">
+        <p class="small text-muted fw-bold mb-2">Headlines</p>
+        <ul class="small mb-3">
+          {% for h in headlines %}<li>{{ h }}</li>{% endfor %}
+        </ul>
+        <p class="small text-muted fw-bold mb-2">Descriptions</p>
+        <ul class="small mb-0">
+          {% for d in descriptions %}<li>{{ d }}</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-4">
+    <div class="card border-secondary h-100">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Budget</h6>
+        <p class="small mb-0">{{ pkg.budget_breakdown }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-secondary h-100">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Targeting</h6>
+        <p class="small mb-0">{{ pkg.targeting }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-secondary h-100">
+      <div class="card-body">
+        <h6 class="text-muted mb-2">Landing Page</h6>
+        <p class="small mb-0">{{ pkg.landing_page_suggestion }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="bg-black rounded p-3 mb-4 border border-secondary">
+  <p class="small fw-bold text-warning mb-2"><i class="bi bi-list-ol me-1"></i>HOW TO BUILD THIS IN GOOGLE ADS</p>
+  <pre class="small text-white mb-0 instructions-pre">{{ pkg.instructions }}</pre>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function reviewDecide(action) {
+  const btns = document.querySelectorAll('#reviewActions button');
+  btns.forEach(b => b.disabled = true);
+  try {
+    const resp = await fetch(`/api/consultant/{{ pkg.id }}/${action}`, { method: 'POST' });
+    if (!resp.ok) throw new Error(await resp.text());
+    location.reload();
+  } catch (e) {
+    alert('Error: ' + e.message);
+    btns.forEach(b => b.disabled = false);
+  }
+}
+</script>
+{% endblock %}
