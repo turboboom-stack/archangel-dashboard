@@ -45,6 +45,12 @@ def _get_client():
     return GoogleAdsClient.load_from_dict(creds)
 
 
+def _parse_date(d):
+    """segments.date comes back from the Ads API as a 'YYYY-MM-DD' string, not a
+    Python date object — SQLite's Date column rejects anything else."""
+    return d if isinstance(d, date) else date.fromisoformat(str(d))
+
+
 def _location_for(campaign_name):
     name = f" {campaign_name.lower()} "
     for needle, loc in config.GOOGLE_ADS_LOCATION_MAP.items():
@@ -65,7 +71,7 @@ def _upsert_campaigns(rows, window_start, window_end):
     for r in rows:
         c = r.campaign
         m = r.metrics
-        d = r.segments.date
+        d = _parse_date(r.segments.date)
         row = (
             db.session.query(GoogleAdsCampaignDaily)
             .filter_by(date=d, campaign_id=str(c.id))
@@ -98,7 +104,7 @@ def _upsert_ad_groups(rows):
     for r in rows:
         ag = r.ad_group
         m = r.metrics
-        d = r.segments.date
+        d = _parse_date(r.segments.date)
         row = (
             db.session.query(GoogleAdsAdGroupDaily)
             .filter_by(date=d, ad_group_id=str(ag.id))
@@ -127,7 +133,7 @@ def _upsert_keywords(rows):
         crit = r.ad_group_criterion
         kw = crit.keyword
         m = r.metrics
-        d = r.segments.date
+        d = _parse_date(r.segments.date)
         row = (
             db.session.query(GoogleAdsKeywordDaily)
             .filter_by(date=d, keyword_id=str(crit.criterion_id))
@@ -159,7 +165,7 @@ def _upsert_search_terms(rows):
     for r in rows:
         st = r.search_term_view
         m = r.metrics
-        d = r.segments.date
+        d = _parse_date(r.segments.date)
         row = (
             db.session.query(GoogleAdsSearchTerm)
             .filter_by(date=d, campaign_id=str(r.campaign.id),
