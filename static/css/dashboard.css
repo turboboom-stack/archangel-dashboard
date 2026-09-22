@@ -1,23 +1,59 @@
-/* --- Archangel Command Center — Color System --- */
+/* --- Archangel — Advisor Design System --- */
 :root {
-  --arc-bg:        #12141f;
-  --arc-surface:   #1e2133;
-  --arc-surface-2: #252840;
-  --arc-border:    rgba(255,255,255,0.09);
-  --arc-text:      #e4e8f0;
-  --arc-muted:     #8b96b0;
-  --arc-accent:    #ffc107;
+  --arc-bg:        #101A2E;
+  --arc-surface:   #1B2942;
+  --arc-surface-2: #22335A;
+  --arc-border:    rgba(237,232,222,0.10);
+  --arc-text:      #EDE8DE;
+  --arc-muted:     #A7A08D;
+  --arc-accent:    #C9A227;
+  --arc-accent-2:  #E0BC4E;
+  --arc-success:   #4C7A63;
+  --arc-danger:    #B8563F;
+  --arc-info:      #5C7A9B;
+
+  --arc-font-display: 'Fraunces', Georgia, serif;
+  --arc-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 body {
-  font-size: 0.875rem;
+  font-family: var(--arc-font-body);
+  font-size: 0.9rem;
   background-color: var(--arc-bg) !important;
   color: var(--arc-text);
 }
 
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--arc-font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* --- Focus visibility (accessibility) --- */
+a:focus-visible, button:focus-visible, input:focus-visible,
+textarea:focus-visible, select:focus-visible, .btn:focus-visible {
+  outline: 2px solid var(--arc-accent-2);
+  outline-offset: 2px;
+}
+
+/* --- Reduced motion --- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Nav */
 .navbar.bg-black {
-  background-color: #0b0d17 !important;
+  background-color: #0B1220 !important;
+  border-bottom-color: var(--arc-border) !important;
+}
+
+.navbar-brand {
+  font-family: var(--arc-font-display);
 }
 
 /* Override Bootstrap dark card/bg-black to use surface colors */
@@ -28,6 +64,7 @@ body {
 .card {
   background-color: var(--arc-surface);
   border-color: var(--arc-border) !important;
+  border-radius: 10px;
 }
 
 .bg-black {
@@ -43,21 +80,68 @@ body {
   color: var(--arc-muted) !important;
 }
 
+/* --- Brass accent replaces Bootstrap's default amber "warning" everywhere --- */
+.text-warning        { color: var(--arc-accent) !important; }
+.bg-warning           { background-color: var(--arc-accent) !important; color: #101A2E !important; }
+.border-warning       { border-color: var(--arc-accent) !important; }
+.btn-warning {
+  background-color: var(--arc-accent) !important;
+  border-color: var(--arc-accent) !important;
+  color: #101A2E !important;
+}
+.btn-warning:hover, .btn-warning:focus {
+  background-color: var(--arc-accent-2) !important;
+  border-color: var(--arc-accent-2) !important;
+  color: #101A2E !important;
+}
+.btn-outline-warning {
+  color: var(--arc-accent) !important;
+  border-color: var(--arc-accent) !important;
+}
+.btn-outline-warning:hover {
+  background-color: var(--arc-accent) !important;
+  color: #101A2E !important;
+}
+.badge.bg-warning { background-color: var(--arc-accent) !important; color: #101A2E !important; }
+.progress-bar.bg-warning { background-color: var(--arc-accent) !important; }
+
+/* --- Sage replaces default green "success" --- */
+.text-success  { color: var(--arc-success) !important; }
+.bg-success    { background-color: var(--arc-success) !important; }
+.border-success{ border-color: var(--arc-success) !important; }
+.btn-success   { background-color: var(--arc-success) !important; border-color: var(--arc-success) !important; }
+.badge.bg-success { background-color: var(--arc-success) !important; }
+.progress-bar.bg-success { background-color: var(--arc-success) !important; }
+
+/* --- Clay replaces default red "danger" --- */
+.text-danger   { color: var(--arc-danger) !important; }
+.bg-danger     { background-color: var(--arc-danger) !important; }
+.border-danger { border-color: var(--arc-danger) !important; }
+.btn-danger    { background-color: var(--arc-danger) !important; border-color: var(--arc-danger) !important; }
+.badge.bg-danger { background-color: var(--arc-danger) !important; }
+.progress-bar.bg-danger { background-color: var(--arc-danger) !important; }
+
+/* --- Dusty blue replaces default cyan "info" --- */
+.text-info   { color: var(--arc-info) !important; }
+.bg-info     { background-color: var(--arc-info) !important; }
+.badge.bg-info { background-color: var(--arc-info) !important; color: #101A2E !important; }
+
 /* Tables */
 .table-dark {
   --bs-table-bg: transparent;
-  --bs-table-hover-bg: rgba(255,255,255,0.05);
+  --bs-table-hover-bg: rgba(237,232,222,0.05);
   --bs-table-color: var(--arc-text);
-  --bs-table-border-color: rgba(255,255,255,0.08);
+  --bs-table-border-color: rgba(237,232,222,0.08);
 }
 
 .table-secondary.text-dark {
   --bs-table-bg: var(--arc-surface-2);
-  color: #bfc7d8 !important;
+  color: var(--arc-text) !important;
 }
 
 .table-secondary.text-dark th {
-  color: #bfc7d8 !important;
+  color: var(--arc-text) !important;
+  font-family: var(--arc-font-body);
 }
 
 /* Borders */
@@ -68,7 +152,7 @@ body {
 /* Progress bars */
 .progress {
   border-radius: 6px;
-  background-color: rgba(255,255,255,0.08) !important;
+  background-color: rgba(237,232,222,0.08) !important;
 }
 
 /* Misc */
@@ -88,10 +172,11 @@ body {
 
 .display-6 {
   font-size: 1.75rem;
+  font-family: var(--arc-font-display);
 }
 
 .action-item:hover {
-  background: rgba(255, 193, 7, 0.04);
+  background: rgba(201, 162, 39, 0.05);
 }
 
 canvas {
@@ -103,7 +188,7 @@ canvas {
   height: 4px;
 }
 .table-responsive::-webkit-scrollbar-thumb {
-  background: #3a3f55;
+  background: #3a4568;
   border-radius: 2px;
 }
 
@@ -131,6 +216,12 @@ canvas {
   border-color: var(--arc-border) !important;
   color: var(--arc-text) !important;
 }
+.form-control.bg-dark:focus {
+  background-color: var(--arc-surface-2) !important;
+  border-color: var(--arc-accent) !important;
+  color: var(--arc-text) !important;
+  box-shadow: 0 0 0 0.2rem rgba(201, 162, 39, 0.18);
+}
 
 /* Alert tweaks */
 .alert-secondary {
@@ -141,10 +232,42 @@ canvas {
 
 /* Code blocks */
 code {
-  color: #79c0ff;
+  color: #8FB4D9;
 }
 
 /* Badge secondary */
 .badge.bg-secondary {
-  background-color: #3a4060 !important;
+  background-color: #34406B !important;
+}
+
+/* --- Home / briefing page --- */
+.briefing-card {
+  background: linear-gradient(160deg, var(--arc-surface) 0%, var(--arc-surface-2) 100%);
+  border: 1px solid var(--arc-border);
+  border-radius: 14px;
+}
+
+.briefing-text {
+  font-family: var(--arc-font-display);
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--arc-text);
+}
+
+.briefing-text strong {
+  color: var(--arc-accent-2);
+  font-weight: 600;
+}
+
+.win-card {
+  border-left: 3px solid var(--arc-success);
+}
+
+.concern-card {
+  border-left: 3px solid var(--arc-danger);
+}
+
+.opportunity-card {
+  border-left: 3px solid var(--arc-accent);
 }

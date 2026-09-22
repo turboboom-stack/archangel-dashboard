@@ -259,6 +259,13 @@ class Ga4Summary(db.Model):
     top_pages_json       = db.Column(db.Text, default="[]")
 
 
+class DailyBriefing(db.Model):
+    __tablename__ = "daily_briefings"
+    id = db.Column(db.Integer, primary_key=True)
+    generated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    text = db.Column(db.Text)
+
+
 class ActionItem(db.Model):
     __tablename__ = "action_items"
     id = db.Column(db.Integer, primary_key=True)

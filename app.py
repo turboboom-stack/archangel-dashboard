@@ -53,11 +53,26 @@ def _current_target():
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
+def _compute_wins(target, bookings_count, live_cpa, gmb_data, clio_data):
+    wins = []
+    if bookings_count >= target["bookings"] * 0.8:
+        pct = round(bookings_count / target["bookings"] * 100)
+        wins.append(f"Bookings are at {pct}% of this month's goal ({bookings_count} of {target['bookings']}).")
+    if live_cpa is not None and live_cpa <= target["cpa_max"]:
+        wins.append(f"Google Ads CPA is ${live_cpa:.0f}, under the ${target['cpa_max']} target.")
+    sd_gmb = gmb_data.get("SD")
+    if sd_gmb and sd_gmb.calls > 0:
+        wins.append(f"San Diego Google Business Profile generated {sd_gmb.calls} calls in the last 28 days.")
+    if clio_data and clio_data.get("status") == "ok" and clio_data.get("revenue_30d", 0) > 0:
+        wins.append(f"${clio_data['revenue_30d']:,.0f} billed in the last 30 days.")
+    return wins[:3]
+
+
 @app.route("/")
 def overview():
     from connectors import webflow_connector, gmb_connector, gsc_connector, google_ads_connector, \
         google_ads_api_connector, ga4_connector, clio_connector
-    from engines import action_items as ai
+    from engines import action_items as ai, briefing
 
     if not db.session.query(ActionItem).filter_by(is_dismissed=False).first():
         ai.run_all()
@@ -88,7 +103,12 @@ def overview():
             live_cpa = round(total_spend / total_conv, 2)
 
     sd_gmb = gmb_data.get("SD")
-    top_items = ai.get_all()[:5]
+    all_items = ai.get_all()
+    concerns = [i for i in all_items if i.severity in ("critical", "warning")][:3]
+    opportunities = [i for i in all_items if i.severity == "opportunity"][:3]
+    wins = _compute_wins(target, bookings_count, live_cpa, gmb_data, clio_data)
+    briefing_text, briefing_error = briefing.get_or_generate(app)
+
     sources = {k: CacheMetadata.get(k) for k in
                ("webflow", "gmb", "gsc", "google_ads", "google_ads_api", "ga4", "clio")}
 
@@ -103,12 +123,30 @@ def overview():
         gsc_summary=gsc_data["summary"],
         ga4=ga4_data,
         clio=clio_data,
-        action_items=top_items,
+        wins=wins,
+        concerns=concerns,
+        opportunities=opportunities,
+        briefing_text=briefing_text,
+        briefing_error=briefing_error,
         sources=sources,
         today=date.today(),
         month_name=date.today().strftime("%B"),
         is_stub=config.STUBS,
     )
+
+
+@app.route("/consultant")
+def consultant():
+    return render_template("consultant_placeholder.html")
+
+
+@app.route("/api/briefing/generate", methods=["POST"])
+def generate_briefing():
+    from engines import briefing
+    text, error = briefing.generate(app)
+    if error and not text:
+        return jsonify({"ok": False, "error": error}), 500
+    return jsonify({"ok": True, "text": text})
 
 
 @app.route("/paid-ads")
