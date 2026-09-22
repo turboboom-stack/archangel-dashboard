@@ -287,6 +287,16 @@ class CampaignPackage(db.Model):
     reviewed_at = db.Column(db.DateTime, nullable=True)
 
 
+class OpportunityIdea(db.Model):
+    __tablename__ = "opportunity_ideas"
+    id = db.Column(db.Integer, primary_key=True)
+    generated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    category = db.Column(db.String(64))  # e.g. ad_format, seasonal, channel, keyword_gap, local
+    title = db.Column(db.String(200))
+    description = db.Column(db.Text)
+    rationale = db.Column(db.Text)
+
+
 class DailyBriefing(db.Model):
     __tablename__ = "daily_briefings"
     id = db.Column(db.Integer, primary_key=True)

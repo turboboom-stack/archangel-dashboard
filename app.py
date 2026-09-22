@@ -272,39 +272,66 @@ def gmb():
 
 @app.route("/seo")
 def seo():
-    from connectors import gsc_connector, webflow_connector
-    gsc_data = gsc_connector.get_cached()
-    wf_data = webflow_connector.get_cached()
-    meta = CacheMetadata.get("gsc")
-    return render_template("seo_rankings.html",
-                           queries=gsc_data["queries"],
-                           summary=gsc_data["summary"],
-                           blog_count=wf_data["published_count"],
-                           meta=meta,
-                           is_stub=config.STUBS["gsc"])
-
-
-@app.route("/content-pipeline")
-def content_pipeline():
-    from connectors import webflow_connector, keywords_connector
-    wf_data = webflow_connector.get_cached(month_start=_month_start())
-    kw_data = keywords_connector.fetch()
-    meta = CacheMetadata.get("webflow")
-    return render_template("content_pipeline.html",
-                           published=wf_data["published"],
-                           drafts=wf_data["drafts"],
-                           kw_data=kw_data,
-                           meta=meta)
+    return redirect(url_for("opportunities"))
 
 
 @app.route("/competitor-intel")
 def competitor_intel():
-    from connectors import seo_db_connector, competitor_reports_connector
+    return redirect(url_for("opportunities"))
+
+
+@app.route("/opportunities")
+def opportunities():
+    from connectors import gsc_connector, webflow_connector, seo_db_connector, \
+        competitor_reports_connector, keywords_connector
+    from models import OpportunityIdea
+
+    gsc_data = gsc_connector.get_cached()
+    wf_data = webflow_connector.get_cached()
     seo_data = seo_db_connector.fetch()
     report_data = competitor_reports_connector.fetch()
-    return render_template("competitor_intel.html",
-                           seo_data=seo_data,
-                           report_data=report_data)
+    kw_data = keywords_connector.fetch()
+    ideas = db.session.query(OpportunityIdea).order_by(OpportunityIdea.category).all()
+
+    return render_template(
+        "opportunities.html",
+        queries=gsc_data["queries"],
+        summary=gsc_data["summary"],
+        blog_count=wf_data["published_count"],
+        is_stub=config.STUBS["gsc"],
+        seo_data=seo_data,
+        report_data=report_data,
+        kw_data=kw_data,
+        ideas=ideas,
+    )
+
+
+@app.route("/api/opportunities/generate", methods=["POST"])
+def generate_opportunities():
+    from engines import opportunity_finder
+    if opportunity_finder.is_running():
+        return jsonify({"ok": False, "error": "Already generating — check back in a moment"}), 409
+    started = opportunity_finder.generate_background(app)
+    if not started:
+        return jsonify({"ok": False, "error": "Already generating — check back in a moment"}), 409
+    return jsonify({"ok": True, "status": "started"})
+
+
+@app.route("/api/opportunities/status")
+def opportunities_status():
+    from engines import opportunity_finder
+    return jsonify({"running": opportunity_finder.is_running(), "error": opportunity_finder.get_last_error()})
+
+
+@app.route("/content-pipeline")
+def content_pipeline():
+    from connectors import webflow_connector
+    wf_data = webflow_connector.get_cached(month_start=_month_start())
+    meta = CacheMetadata.get("webflow")
+    return render_template("content_pipeline.html",
+                           published=wf_data["published"],
+                           drafts=wf_data["drafts"],
+                           meta=meta)
 
 
 @app.route("/bookings")

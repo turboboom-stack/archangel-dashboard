@@ -160,7 +160,7 @@ def rule_gsc_low_hanging():
             "opportunity", "seo", "GSC_LOW_HANGING",
             f'"{q.query}" gets {q.impressions} impressions but ranks #{q.position:.0f}. '
             f'Optimize this page or write a dedicated post.',
-            "View SEO", "/seo"
+            "View Opportunities", "/opportunities"
         )
         for q in opportunities
     ]
@@ -190,7 +190,7 @@ def rule_content_gap():
         _item(
             "opportunity", "competitor", "CONTENT_GAP",
             f'{g["businesses"]} competitors use "{g["keyword"]}" ({g["category"]}) — no Archangel content. Add to pipeline.',
-            "View Competitors", "/competitor-intel"
+            "View Opportunities", "/opportunities"
         )
         for g in gaps
     ]

@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+{% block title %}Opportunities — Archangel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h4 class="mb-0 text-warning fw-bold"><i class="bi bi-compass me-2"></i>Opportunities</h4>
+    <p class="text-muted small mb-0">Keyword gaps, competitor moves, and ideas worth trying.</p>
+  </div>
+  <button type="button" class="btn btn-outline-warning btn-sm" id="ideasBtn" onclick="generateIdeas()">
+    <i class="bi bi-stars me-1"></i>Generate Ideas
+  </button>
+</div>
+
+<!-- Non-traditional ideas -->
+<h6 class="text-muted mb-3">Worth Trying</h6>
+{% if ideas %}
+<div class="row g-3 mb-5" id="ideasList">
+  {% for idea in ideas %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card opportunity-card h-100">
+      <div class="card-body">
+        <span class="badge bg-secondary mb-2">{{ idea.category|replace('_', ' ') }}</span>
+        <h6 class="mb-2">{{ idea.title }}</h6>
+        <p class="small mb-2">{{ idea.description }}</p>
+        <p class="small text-muted mb-0"><em>{{ idea.rationale }}</em></p>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card border-secondary mb-5" id="ideasList">
+  <div class="card-body text-center text-muted py-5">
+    <i class="bi bi-stars fs-1 d-block mb-3"></i>
+    No ideas generated yet — click "Generate Ideas" for angles beyond the usual keyword/competitor data below.
+  </div>
+</div>
+{% endif %}
+
+<!-- Keyword queue -->
+<h6 class="text-muted mb-3">Content Keyword Queue</h6>
+<div class="row g-3 mb-5">
+  <div class="col-md-4">
+    <div class="card border-secondary h-100">
+      <div class="card-body">
+        <canvas id="kwDonut" height="180"></canvas>
+        <div class="row text-center mt-3">
+          <div class="col-4">
+            <div class="small text-muted">Pending</div>
+            <div class="fw-bold text-warning">{{ kw_data.counts.pending or 0 }}</div>
+          </div>
+          <div class="col-4">
+            <div class="small text-muted">Generated</div>
+            <div class="fw-bold text-info">{{ kw_data.counts.generated or 0 }}</div>
+          </div>
+          <div class="col-4">
+            <div class="small text-muted">Published</div>
+            <div class="fw-bold text-success">{{ kw_data.counts.published or 0 }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-8">
+    <div class="card border-secondary h-100">
+      <div class="card-header border-secondary">
+        <h6 class="mb-0"><i class="bi bi-arrow-up-circle me-2 text-warning"></i>Next Up — Top Pending Keywords</h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-dark table-sm mb-0">
+          <thead class="table-secondary text-dark">
+            <tr><th>Keyword</th><th class="text-end">Volume</th><th class="text-end">CPC</th><th>Intent</th></tr>
+          </thead>
+          <tbody>
+            {% for kw in kw_data.top_pending %}
+            <tr>
+              <td>{{ kw.keyword }}</td>
+              <td class="text-end">{{ "{:,}".format(kw.volume or 0) }}</td>
+              <td class="text-end">${{ kw.cpc or '—' }}</td>
+              <td><span class="badge bg-secondary">{{ kw.intent or '—' }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SEO -->
+<h6 class="text-muted mb-3">Organic Search {% if is_stub %}<span class="badge bg-secondary ms-1">stub data</span>{% endif %}</h6>
+{% if summary %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3">
+      <div class="text-muted small mb-1">Total Clicks</div>
+      <div class="h4 fw-bold text-info mb-0">{{ summary.total_clicks }}</div>
+      <div class="text-muted small">28 days</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3">
+      <div class="text-muted small mb-1">Impressions</div>
+      <div class="h4 fw-bold text-light mb-0">{{ summary.total_impressions }}</div>
+      <div class="text-muted small">28 days</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3">
+      <div class="text-muted small mb-1">Avg Position</div>
+      <div class="h4 fw-bold mb-0 {% if summary.avg_position <= 5 %}text-success{% elif summary.avg_position <= 15 %}text-warning{% else %}text-danger{% endif %}">
+        #{{ summary.avg_position|round(1) }}
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-gray-900 border-secondary text-center p-3">
+      <div class="text-muted small mb-1">Blog Posts</div>
+      <div class="h4 fw-bold text-success mb-0">{{ blog_count }}</div>
+      <div class="text-muted small">published</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% set ranking_opportunities = queries | selectattr('impressions', 'gt', 100) | selectattr('position', 'gt', 10) | list %}
+{% if ranking_opportunities %}
+<div class="card opportunity-card mb-3">
+  <div class="card-header border-secondary">
+    <h6 class="mb-0 text-warning"><i class="bi bi-lightning me-2"></i>Ranking Opportunities (&gt;100 impressions, position &gt;10)</h6>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-sm mb-0">
+      <thead class="table-secondary text-dark">
+        <tr><th>Query</th><th class="text-end">Impressions</th><th class="text-end">Clicks</th><th class="text-end">Position</th></tr>
+      </thead>
+      <tbody>
+        {% for q in ranking_opportunities[:5] %}
+        <tr>
+          <td>{{ q.query }}</td>
+          <td class="text-end">{{ q.impressions }}</td>
+          <td class="text-end">{{ q.clicks }}</td>
+          <td class="text-end text-danger fw-bold">#{{ q.position|round(1) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card border-secondary mb-5">
+  <div class="card-header border-secondary">
+    <h6 class="mb-0"><i class="bi bi-search me-2 text-warning"></i>Top Organic Queries</h6>
+  </div>
+  <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+    <table class="table table-dark table-hover table-sm mb-0">
+      <thead class="table-secondary text-dark sticky-top">
+        <tr><th>Query</th><th class="text-end">Clicks</th><th class="text-end">Impressions</th><th class="text-end">CTR</th><th class="text-end">Position</th></tr>
+      </thead>
+      <tbody>
+        {% for q in queries %}
+        <tr>
+          <td>{{ q.query }}</td>
+          <td class="text-end">{{ q.clicks }}</td>
+          <td class="text-end">{{ q.impressions }}</td>
+          <td class="text-end">{{ (q.ctr * 100)|round(1) }}%</td>
+          <td class="text-end fw-bold {% if q.position <= 5 %}text-success{% elif q.position <= 10 %}text-warning{% else %}text-danger{% endif %}">
+            #{{ q.position|round(1) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Competitors -->
+<h6 class="text-muted mb-3">
+  Competitor Intelligence
+  <span class="text-muted fw-normal">— {{ seo_data.stats.completed_businesses or 0 }} competitors, {{ seo_data.stats.unique_keywords or 0 }} keywords tracked</span>
+</h6>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    {% if report_data.latest %}
+    <div class="card border-secondary mb-3">
+      <div class="card-header border-secondary"><h6 class="mb-0"><i class="bi bi-calendar3 me-2 text-warning"></i>Latest Report</h6></div>
+      <div class="card-body">
+        <div class="small text-muted mb-1">Date</div>
+        <div class="mb-3 fw-bold">{{ report_data.latest.date }}</div>
+        <div class="row g-2 text-center">
+          <div class="col-6">
+            <div class="p-2 bg-dark rounded">
+              <div class="text-muted" style="font-size:.7rem">Competitors</div>
+              <div class="fw-bold text-warning">{{ report_data.latest.competitors_analyzed }}</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 bg-dark rounded">
+              <div class="text-muted" style="font-size:.7rem">Total Keywords</div>
+              <div class="fw-bold text-info">{{ report_data.latest.total_keywords }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-secondary mb-3">
+      <div class="card-header border-secondary"><h6 class="mb-0"><i class="bi bi-stars me-2 text-warning"></i>New This Week</h6></div>
+      <div class="card-body p-0">
+        {% if report_data.new_this_week %}
+          {% for kw in report_data.new_this_week[:10] %}
+          <div class="px-3 py-2 border-bottom border-secondary d-flex justify-content-between">
+            <span class="small">{{ kw.keyword if kw is mapping else kw }}</span>
+            {% if kw is mapping %}<span class="badge bg-secondary">{{ kw.category }}</span>{% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-muted text-center py-3 small">No new keywords this week</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card border-secondary">
+      <div class="card-header border-secondary"><h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Report History</h6></div>
+      <div class="card-body p-0">
+        {% for r in report_data.reports | reverse %}
+        <div class="px-3 py-2 border-bottom border-secondary d-flex justify-content-between">
+          <span class="small">{{ r.date }}</span>
+          <span class="text-muted small">{{ r.total_keywords }} kws</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card border-secondary mb-4">
+      <div class="card-header border-secondary"><h6 class="mb-0"><i class="bi bi-trophy me-2 text-warning"></i>Top Competitor Keywords</h6></div>
+      <div class="table-responsive" style="max-height: 350px; overflow-y:auto;">
+        <table class="table table-dark table-hover table-sm mb-0">
+          <thead class="table-secondary text-dark sticky-top">
+            <tr><th>#</th><th>Keyword</th><th>Category</th><th class="text-end">Sites Using</th></tr>
+          </thead>
+          <tbody>
+            {% for kw in seo_data.aggregated %}
+            <tr>
+              <td class="text-muted">{{ loop.index }}</td>
+              <td class="small">{{ kw.keyword }}</td>
+              <td>
+                <span class="badge
+                  {% if kw.category == 'Probate' %}bg-danger
+                  {% elif kw.category == 'Trust Planning' %}bg-warning text-dark
+                  {% elif kw.category == 'Legal Services' %}bg-info text-dark
+                  {% elif kw.category == 'Asset Protection' %}bg-success
+                  {% else %}bg-secondary{% endif %}">
+                  {{ kw.category }}
+                </span>
+              </td>
+              <td class="text-end fw-bold">{{ kw.businesses }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if seo_data.businesses %}
+    <div class="card border-secondary">
+      <div class="card-header border-secondary"><h6 class="mb-0"><i class="bi bi-people me-2 text-warning"></i>Tracked Competitors</h6></div>
+      <div class="table-responsive">
+        <table class="table table-dark table-hover table-sm mb-0">
+          <thead class="table-secondary text-dark">
+            <tr><th>Name</th><th>Location</th><th>Status</th><th>Last Analyzed</th></tr>
+          </thead>
+          <tbody>
+            {% for biz in seo_data.businesses %}
+            <tr>
+              <td class="small">
+                {% if biz.website %}
+                  <a href="{{ biz.website }}" target="_blank" class="text-light text-decoration-none">
+                    {{ biz.name }} <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.65rem"></i>
+                  </a>
+                {% else %}{{ biz.name }}{% endif %}
+              </td>
+              <td class="text-muted small">{{ biz.location or '—' }}</td>
+              <td>
+                <span class="badge {% if biz.status == 'completed' %}bg-success{% elif biz.status == 'analyzing' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                  {{ biz.status }}
+                </span>
+              </td>
+              <td class="text-muted small">{{ biz.last_analyzed or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+new Chart(document.getElementById('kwDonut'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Pending', 'Generated', 'Published'],
+    datasets: [{
+      data: [{{ kw_data.counts.pending or 0 }}, {{ kw_data.counts.generated or 0 }}, {{ kw_data.counts.published or 0 }}],
+      backgroundColor: ['#C9A227', '#5C7A9B', '#4C7A63'],
+      borderWidth: 0,
+    }]
+  },
+  options: { cutout: '65%', plugins: { legend: { display: false } } }
+});
+
+async function generateIdeas() {
+  const btn = document.getElementById('ideasBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Thinking…';
+
+  try {
+    const resp = await fetch('/api/opportunities/generate', { method: 'POST' });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Something went wrong');
+
+    const start = Date.now();
+    const poll = setInterval(async () => {
+      if (Date.now() - start > 120000) {
+        clearInterval(poll);
+        showToast('Timed out — check back shortly.', true);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-stars me-1"></i>Generate Ideas';
+        return;
+      }
+      const check = await fetch('/api/opportunities/status');
+      const status = await check.json();
+      if (status.running) return;
+      clearInterval(poll);
+      if (status.error) {
+        showToast('Error: ' + status.error, true);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-stars me-1"></i>Generate Ideas';
+      } else {
+        location.reload();
+      }
+    }, 3000);
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-stars me-1"></i>Generate Ideas';
+  }
+}
+</script>
+{% endblock %}
