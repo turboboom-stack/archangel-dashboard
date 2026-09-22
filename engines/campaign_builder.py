@@ -6,10 +6,17 @@ a landing page suggestion, and step-by-step implementation instructions.
 
 Nothing here ever touches the live Google Ads account — it only creates a CampaignPackage
 row for human review, same as every other AI-generated recommendation in this app.
+
+Runs in a background thread (same pattern as engines/ads_analyzer.py) rather than
+synchronously in the request — a full campaign package is a large structured-JSON
+generation that can occasionally run past gunicorn's worker timeout, which kills the
+connection before Flask can respond and surfaces as a broken non-JSON response in the
+browser. The wizard starts generation and polls /api/consultant/status instead.
 """
 
 import json
 import logging
+import threading
 
 import config
 from engines import claude_client
@@ -100,40 +107,77 @@ def _as_text(value):
     return value or ""
 
 
-def generate(goal, goal_freeform, budget_monthly, location, keyword_direction, landing_page_preference):
-    """Generate and persist a CampaignPackage. Must be called within an active Flask
-    request/app context (it is only ever invoked synchronously from a route handler,
-    unlike engines that also run from background threads). Returns (package, error_msg)."""
+def _generate_sync(app, goal, goal_freeform, budget_monthly, location, keyword_direction, landing_page_preference):
+    """Do the actual generation + persistence. Returns (package_id, error_msg)."""
     if not config.ANTHROPIC_API_KEY:
         return None, "ANTHROPIC_API_KEY not configured"
 
-    from models import db, CampaignPackage
+    with app.app_context():
+        from models import db, CampaignPackage
 
-    prompt = _build_prompt(goal, goal_freeform, budget_monthly, location, keyword_direction, landing_page_preference)
+        prompt = _build_prompt(goal, goal_freeform, budget_monthly, location, keyword_direction, landing_page_preference)
 
-    try:
-        result = claude_client.call_json(SYSTEM_PROMPT, prompt, max_tokens=4096, cache_system=False)
-    except Exception as e:
-        logger.error(f"Campaign builder failed: {e}")
-        return None, str(e)
+        try:
+            result = claude_client.call_json(SYSTEM_PROMPT, prompt, max_tokens=4096, cache_system=False)
+        except Exception as e:
+            logger.error(f"Campaign builder failed: {e}")
+            return None, str(e)
 
-    pkg = CampaignPackage(
-        goal=goal,
-        goal_freeform=goal_freeform,
-        budget_monthly=budget_monthly,
-        location=location,
-        keyword_direction=keyword_direction,
-        landing_page_preference=landing_page_preference,
-        campaign_name=_as_text(result.get("campaign_name", "New Campaign")),
-        summary=_as_text(result.get("summary", "")),
-        keywords_json=json.dumps(result.get("keywords", [])),
-        headlines_json=json.dumps(result.get("headlines", [])),
-        descriptions_json=json.dumps(result.get("descriptions", [])),
-        budget_breakdown=_as_text(result.get("budget_breakdown", "")),
-        targeting=_as_text(result.get("targeting", "")),
-        landing_page_suggestion=_as_text(result.get("landing_page_suggestion", "")),
-        instructions=_as_text(result.get("instructions", "")),
-    )
-    db.session.add(pkg)
-    db.session.commit()
-    return pkg, None
+        pkg = CampaignPackage(
+            goal=goal,
+            goal_freeform=goal_freeform,
+            budget_monthly=budget_monthly,
+            location=location,
+            keyword_direction=keyword_direction,
+            landing_page_preference=landing_page_preference,
+            campaign_name=_as_text(result.get("campaign_name", "New Campaign")),
+            summary=_as_text(result.get("summary", "")),
+            keywords_json=json.dumps(result.get("keywords", [])),
+            headlines_json=json.dumps(result.get("headlines", [])),
+            descriptions_json=json.dumps(result.get("descriptions", [])),
+            budget_breakdown=_as_text(result.get("budget_breakdown", "")),
+            targeting=_as_text(result.get("targeting", "")),
+            landing_page_suggestion=_as_text(result.get("landing_page_suggestion", "")),
+            instructions=_as_text(result.get("instructions", "")),
+        )
+        db.session.add(pkg)
+        db.session.commit()
+        return pkg.id, None
+
+
+_lock = threading.Lock()
+_running = False
+_last_result = {"id": None, "error": None}
+
+
+def generate_background(app, goal, goal_freeform, budget_monthly, location, keyword_direction, landing_page_preference):
+    """Spawn a background thread to generate the package. Returns False if one's already running."""
+    global _running
+    if not _lock.acquire(blocking=False):
+        return False
+    _running = True
+    _last_result["id"] = None
+    _last_result["error"] = None
+
+    def _worker():
+        global _running
+        try:
+            pkg_id, error = _generate_sync(
+                app, goal, goal_freeform, budget_monthly, location, keyword_direction, landing_page_preference
+            )
+            _last_result["id"] = pkg_id
+            _last_result["error"] = error
+        finally:
+            _running = False
+            _lock.release()
+
+    threading.Thread(target=_worker, daemon=True).start()
+    return True
+
+
+def is_running():
+    return _running
+
+
+def get_last_result():
+    return dict(_last_result)

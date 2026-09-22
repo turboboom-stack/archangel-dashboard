@@ -174,7 +174,11 @@ def generate_campaign_package():
     if not data.get("location"):
         return jsonify({"ok": False, "error": "Location is required"}), 400
 
-    pkg, error = campaign_builder.generate(
+    if campaign_builder.is_running():
+        return jsonify({"ok": False, "error": "Already generating a campaign — check back in a moment"}), 409
+
+    started = campaign_builder.generate_background(
+        app,
         goal=data.get("goal"),
         goal_freeform=data.get("goal_freeform", ""),
         budget_monthly=budget_monthly,
@@ -182,9 +186,16 @@ def generate_campaign_package():
         keyword_direction=data.get("keyword_direction", ""),
         landing_page_preference=data.get("landing_page_preference", ""),
     )
-    if error:
-        return jsonify({"ok": False, "error": error}), 500
-    return jsonify({"ok": True, "id": pkg.id})
+    if not started:
+        return jsonify({"ok": False, "error": "Already generating a campaign — check back in a moment"}), 409
+    return jsonify({"ok": True, "status": "started"})
+
+
+@app.route("/api/consultant/status")
+def consultant_status():
+    from engines import campaign_builder
+    result = campaign_builder.get_last_result()
+    return jsonify({"running": campaign_builder.is_running(), **result})
 
 
 @app.route("/api/consultant/<int:pkg_id>/approve", methods=["POST"])

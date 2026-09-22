@@ -245,7 +245,32 @@ async function wizardGenerate() {
     });
     const data = await resp.json();
     if (!data.ok) throw new Error(data.error || 'Something went wrong');
-    window.location.href = '/consultant/' + data.id;
+
+    // Generation runs in a background thread server-side (it can take a while) — poll
+    // for completion instead of waiting on one long request, which can get killed by
+    // the server's own request timeout before it ever responds.
+    const start = Date.now();
+    const poll = setInterval(async () => {
+      if (Date.now() - start > 180000) {
+        clearInterval(poll);
+        throw new Error('Timed out — check back on the campaign list shortly.');
+      }
+      const check = await fetch('/api/consultant/status');
+      const status = await check.json();
+      if (status.running) return;
+      clearInterval(poll);
+      if (status.error) {
+        showError('Error: ' + status.error);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-stars me-1"></i>Generate My Campaign';
+      } else if (status.id) {
+        window.location.href = '/consultant/' + status.id;
+      } else {
+        showError('Something went wrong — no campaign was created.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-stars me-1"></i>Generate My Campaign';
+      }
+    }, 3000);
   } catch (e) {
     showError('Error: ' + e.message);
     btn.disabled = false;
