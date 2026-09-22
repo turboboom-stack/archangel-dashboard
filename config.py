@@ -111,6 +111,17 @@ GOOGLE_ADS_LOCATION_MAP = {
     " av ":        "AV",
 }
 
+# ── Aspen lead-ingest webhook ─────────────────────────────────────────────────────
+# Fired when the Clio sync (connectors/clio_connector.py) finds a genuinely new contact.
+ASPEN_INGEST_URL = os.environ.get("ASPEN_INGEST_URL") or _env.get(
+    "ASPEN_INGEST_URL", "https://jwzvioaygipzejiteptp.supabase.co/functions/v1/ingest-event"
+)
+ASPEN_ADVISOR_ID = os.environ.get("ASPEN_ADVISOR_ID") or _env.get(
+    "ASPEN_ADVISOR_ID", "0069cf21-f542-40d3-9c5e-29cdfea18311"
+)
+# Optional — set if the endpoint turns out to require an Authorization header.
+ASPEN_API_KEY = os.environ.get("ASPEN_API_KEY") or _env.get("ASPEN_API_KEY", "")
+
 # ── Ad strategy business rules ───────────────────────────────────────────────────
 # Single source of truth for the AI advisory skills (engines/ads_skills/) — flip
 # these instead of hunting through prompt strings when strategy changes.

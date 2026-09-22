@@ -167,8 +167,7 @@ def _fetch_new_contacts(days=30):
     since = (date.today() - timedelta(days=days)).isoformat()
     contacts = []
     for contact in _paginate("contacts", {
-        "fields": "id,name,type,created_at,primary_email_address,primary_phone_number,"
-                  "custom_field_values{field_name,field_value}",
+        "fields": "id,name,type,created_at,primary_email_address,primary_phone_number",
         "order":  "id(desc)",
     }):
         created_raw = contact.get("created_at", "")
@@ -177,20 +176,14 @@ def _fetch_new_contacts(days=30):
         if created_raw[:10] < since:
             break  # ids desc ≈ created desc — past our window
 
-        # Belt-and-suspenders: if a Zapier/Make step writes gclid/UTM into Clio custom
-        # fields, pick them up here too (webhooks are the primary attribution path).
-        cf = {
-            str(f.get("field_name", "")).strip().lower(): (f.get("value") or f.get("field_value"))
-            for f in (contact.get("custom_field_values") or [])
-            if isinstance(f, dict)
-        }
-        gclid = cf.get("gclid") or cf.get("google click id") or ""
-        campaign = cf.get("utm_campaign") or cf.get("campaign") or ""
-        source = cf.get("utm_source") or cf.get("source") or ""
+        gclid = ""
+        campaign = ""
+        source = ""
 
         contacts.append({
             "clio_id":    f"contact-{contact.get('id', '')}",
             "name":       contact.get("name", ""),
+            "type":       contact.get("type", ""),
             "email":      contact.get("primary_email_address") or "",
             "phone":      contact.get("primary_phone_number") or "",
             "created_at": created_raw[:10],
@@ -243,6 +236,7 @@ def fetch(app):
             }
 
             from engines import attribution
+            from connectors import aspen_connector
 
             added = 0
             for c in new_contacts:
@@ -264,6 +258,14 @@ def fetch(app):
                 )
                 if created:
                     added += 1
+                    # Notify Aspen of newly-created individual contacts (skip companies —
+                    # Aspen's schema is first_name/last_name, person-oriented).
+                    if c["email"] and c.get("type", "").lower() != "company":
+                        first, _, last = (c["name"] or "").partition(" ")
+                        aspen_connector.send_contact_created(
+                            email=c["email"], first_name=first, last_name=last,
+                            properties={"source": "Clio", "clio_id": c["clio_id"]},
+                        )
 
             meta = CacheMetadata.get("clio")
             meta.mark_ok()
