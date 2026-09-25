@@ -1,16 +1,16 @@
-/* --- Archangel — Advisor Design System --- */
+/* --- Archangel — Advisor Design System (Light) --- */
 :root {
-  --arc-bg:        #101A2E;
-  --arc-surface:   #1B2942;
-  --arc-surface-2: #22335A;
-  --arc-border:    rgba(237,232,222,0.10);
-  --arc-text:      #EDE8DE;
-  --arc-muted:     #A7A08D;
-  --arc-accent:    #C9A227;
-  --arc-accent-2:  #E0BC4E;
-  --arc-success:   #4C7A63;
-  --arc-danger:    #B8563F;
-  --arc-info:      #5C7A9B;
+  --arc-bg:        #FAFAF8;
+  --arc-surface:   #FFFFFF;
+  --arc-surface-2: #F3F4F1;
+  --arc-border:    #E5E7EB;
+  --arc-text:      #1F2937;
+  --arc-muted:     #6B7280;
+  --arc-accent:    #3B6E5C;
+  --arc-accent-2:  #2F5A4B;
+  --arc-success:   #3B6E5C;   /* same as accent — "good" and "primary" are the same signal here */
+  --arc-danger:    #B54B3A;   /* the one attention color */
+  --arc-info:      #6B7280;   /* folded into neutral — no separate hue */
 
   --arc-font-display: 'Fraunces', Georgia, serif;
   --arc-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -27,12 +27,13 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--arc-font-display);
   font-weight: 600;
   letter-spacing: -0.01em;
+  color: var(--arc-text);
 }
 
 /* --- Focus visibility (accessibility) --- */
 a:focus-visible, button:focus-visible, input:focus-visible,
 textarea:focus-visible, select:focus-visible, .btn:focus-visible {
-  outline: 2px solid var(--arc-accent-2);
+  outline: 2px solid var(--arc-accent);
   outline-offset: 2px;
 }
 
@@ -48,51 +49,66 @@ textarea:focus-visible, select:focus-visible, .btn:focus-visible {
 
 /* Nav */
 .navbar.bg-black {
-  background-color: #0B1220 !important;
-  border-bottom-color: var(--arc-border) !important;
+  background-color: var(--arc-surface) !important;
+  border-bottom: 1px solid var(--arc-border) !important;
+}
+.navbar-dark .navbar-nav .nav-link {
+  color: var(--arc-muted);
+}
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link.active {
+  color: var(--arc-accent);
+}
+.navbar-dark .navbar-toggler {
+  border-color: var(--arc-border);
+}
+.navbar-dark .navbar-toggler-icon {
+  filter: invert(1) grayscale(100%);
 }
 
 .navbar-brand {
   font-family: var(--arc-font-display);
 }
 
-/* Override Bootstrap dark card/bg-black to use surface colors */
-.bg-gray-900 {
-  background-color: var(--arc-surface-2) !important;
+/* Surfaces — every "dark" card/background class now renders as a light surface */
+.bg-gray-900, .bg-black, .bg-dark {
+  background-color: var(--arc-surface) !important;
 }
 
 .card {
   background-color: var(--arc-surface);
-  border-color: var(--arc-border) !important;
-  border-radius: 10px;
+  border: 1px solid var(--arc-border) !important;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(31, 41, 55, 0.04);
 }
 
-.bg-black {
-  background-color: var(--arc-surface) !important;
+.card-header {
+  background-color: transparent !important;
 }
 
-.bg-dark {
-  background-color: var(--arc-surface-2) !important;
+/* Text — "light"/"white" text classes flip to dark text on the new light background */
+.text-light, .text-white {
+  color: var(--arc-text) !important;
 }
 
-/* Better contrast muted text */
 .text-muted {
   color: var(--arc-muted) !important;
 }
 
-/* --- Brass accent replaces Bootstrap's default amber "warning" everywhere --- */
+/* --- Single accent replaces Bootstrap's "warning" everywhere (it was already being
+   used as the brand/primary color, not literal caution) --- */
 .text-warning        { color: var(--arc-accent) !important; }
-.bg-warning           { background-color: var(--arc-accent) !important; color: #101A2E !important; }
+.bg-warning           { background-color: var(--arc-accent) !important; color: #FFFFFF !important; }
 .border-warning       { border-color: var(--arc-accent) !important; }
 .btn-warning {
   background-color: var(--arc-accent) !important;
   border-color: var(--arc-accent) !important;
-  color: #101A2E !important;
+  color: #FFFFFF !important;
 }
 .btn-warning:hover, .btn-warning:focus {
   background-color: var(--arc-accent-2) !important;
   border-color: var(--arc-accent-2) !important;
-  color: #101A2E !important;
+  color: #FFFFFF !important;
 }
 .btn-outline-warning {
   color: var(--arc-accent) !important;
@@ -100,38 +116,38 @@ textarea:focus-visible, select:focus-visible, .btn:focus-visible {
 }
 .btn-outline-warning:hover {
   background-color: var(--arc-accent) !important;
-  color: #101A2E !important;
+  color: #FFFFFF !important;
 }
-.badge.bg-warning { background-color: var(--arc-accent) !important; color: #101A2E !important; }
+.badge.bg-warning { background-color: var(--arc-accent) !important; color: #FFFFFF !important; }
 .progress-bar.bg-warning { background-color: var(--arc-accent) !important; }
 
-/* --- Sage replaces default green "success" --- */
+/* --- Success mirrors the accent (same "good" signal) --- */
 .text-success  { color: var(--arc-success) !important; }
-.bg-success    { background-color: var(--arc-success) !important; }
+.bg-success    { background-color: var(--arc-success) !important; color: #FFFFFF !important; }
 .border-success{ border-color: var(--arc-success) !important; }
-.btn-success   { background-color: var(--arc-success) !important; border-color: var(--arc-success) !important; }
-.badge.bg-success { background-color: var(--arc-success) !important; }
+.btn-success   { background-color: var(--arc-success) !important; border-color: var(--arc-success) !important; color: #FFFFFF !important; }
+.badge.bg-success { background-color: var(--arc-success) !important; color: #FFFFFF !important; }
 .progress-bar.bg-success { background-color: var(--arc-success) !important; }
 
-/* --- Clay replaces default red "danger" --- */
+/* --- Danger/attention — the one color that stands apart --- */
 .text-danger   { color: var(--arc-danger) !important; }
-.bg-danger     { background-color: var(--arc-danger) !important; }
+.bg-danger     { background-color: var(--arc-danger) !important; color: #FFFFFF !important; }
 .border-danger { border-color: var(--arc-danger) !important; }
-.btn-danger    { background-color: var(--arc-danger) !important; border-color: var(--arc-danger) !important; }
-.badge.bg-danger { background-color: var(--arc-danger) !important; }
+.btn-danger    { background-color: var(--arc-danger) !important; border-color: var(--arc-danger) !important; color: #FFFFFF !important; }
+.badge.bg-danger { background-color: var(--arc-danger) !important; color: #FFFFFF !important; }
 .progress-bar.bg-danger { background-color: var(--arc-danger) !important; }
 
-/* --- Dusty blue replaces default cyan "info" --- */
-.text-info   { color: var(--arc-info) !important; }
-.bg-info     { background-color: var(--arc-info) !important; }
-.badge.bg-info { background-color: var(--arc-info) !important; color: #101A2E !important; }
+/* --- Info folds into neutral — no separate hue --- */
+.text-info   { color: var(--arc-muted) !important; }
+.bg-info     { background-color: var(--arc-surface-2) !important; color: var(--arc-text) !important; }
+.badge.bg-info { background-color: var(--arc-surface-2) !important; color: var(--arc-text) !important; border: 1px solid var(--arc-border); }
 
 /* Tables */
 .table-dark {
   --bs-table-bg: transparent;
-  --bs-table-hover-bg: rgba(237,232,222,0.05);
+  --bs-table-hover-bg: var(--arc-surface-2);
   --bs-table-color: var(--arc-text);
-  --bs-table-border-color: rgba(237,232,222,0.08);
+  --bs-table-border-color: var(--arc-border);
 }
 
 .table-secondary.text-dark {
@@ -140,8 +156,10 @@ textarea:focus-visible, select:focus-visible, .btn:focus-visible {
 }
 
 .table-secondary.text-dark th {
-  color: var(--arc-text) !important;
+  color: var(--arc-muted) !important;
   font-family: var(--arc-font-body);
+  font-weight: 600;
+  font-size: 0.8rem;
 }
 
 /* Borders */
@@ -152,7 +170,7 @@ textarea:focus-visible, select:focus-visible, .btn:focus-visible {
 /* Progress bars */
 .progress {
   border-radius: 6px;
-  background-color: rgba(237,232,222,0.08) !important;
+  background-color: var(--arc-surface-2) !important;
 }
 
 /* Misc */
@@ -176,7 +194,7 @@ textarea:focus-visible, select:focus-visible, .btn:focus-visible {
 }
 
 .action-item:hover {
-  background: rgba(201, 162, 39, 0.05);
+  background: var(--arc-surface-2);
 }
 
 canvas {
@@ -188,7 +206,7 @@ canvas {
   height: 4px;
 }
 .table-responsive::-webkit-scrollbar-thumb {
-  background: #3a4568;
+  background: var(--arc-border);
   border-radius: 2px;
 }
 
@@ -211,16 +229,20 @@ canvas {
 .booking-progress { height: 12px; }
 
 /* Form controls */
-.form-control.bg-dark {
-  background-color: var(--arc-surface-2) !important;
+.form-control.bg-dark, .form-select.bg-dark {
+  background-color: var(--arc-surface) !important;
   border-color: var(--arc-border) !important;
   color: var(--arc-text) !important;
 }
-.form-control.bg-dark:focus {
-  background-color: var(--arc-surface-2) !important;
+.form-control.bg-dark:focus, .form-select.bg-dark:focus {
+  background-color: var(--arc-surface) !important;
   border-color: var(--arc-accent) !important;
   color: var(--arc-text) !important;
-  box-shadow: 0 0 0 0.2rem rgba(201, 162, 39, 0.18);
+  box-shadow: 0 0 0 0.2rem rgba(59, 110, 92, 0.15);
+}
+.form-control::placeholder {
+  color: var(--arc-muted);
+  opacity: 0.7;
 }
 
 /* Alert tweaks */
@@ -232,19 +254,60 @@ canvas {
 
 /* Code blocks */
 code {
-  color: #8FB4D9;
+  color: var(--arc-accent-2);
+  background: var(--arc-surface-2);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
 }
 
-/* Badge secondary */
+/* Badge secondary — neutral, not a saturated color */
 .badge.bg-secondary {
-  background-color: #34406B !important;
+  background-color: var(--arc-surface-2) !important;
+  color: var(--arc-muted) !important;
+  border: 1px solid var(--arc-border);
+  font-weight: 500;
+}
+
+/* Dropdown */
+.dropdown-menu-dark {
+  background-color: var(--arc-surface);
+  border: 1px solid var(--arc-border);
+  box-shadow: 0 4px 16px rgba(31, 41, 55, 0.08);
+}
+.dropdown-menu-dark .dropdown-item {
+  color: var(--arc-text);
+}
+.dropdown-menu-dark .dropdown-item:hover, .dropdown-menu-dark .dropdown-item:focus {
+  background-color: var(--arc-surface-2);
+  color: var(--arc-text);
+}
+.dropdown-divider {
+  border-color: var(--arc-border);
+}
+
+/* Toast */
+.toast.text-bg-dark {
+  background-color: var(--arc-surface) !important;
+  color: var(--arc-text) !important;
+  border: 1px solid var(--arc-border) !important;
+  box-shadow: 0 4px 16px rgba(31, 41, 55, 0.1);
+}
+.btn-close-white {
+  filter: none;
+}
+
+/* Modal */
+.modal-content.bg-dark {
+  background-color: var(--arc-surface) !important;
+  color: var(--arc-text) !important;
 }
 
 /* --- Home / briefing page --- */
 .briefing-card {
-  background: linear-gradient(160deg, var(--arc-surface) 0%, var(--arc-surface-2) 100%);
+  background: var(--arc-surface);
   border: 1px solid var(--arc-border);
   border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(31, 41, 55, 0.05);
 }
 
 .briefing-text {
@@ -261,13 +324,22 @@ code {
 }
 
 .win-card {
-  border-left: 3px solid var(--arc-success);
+  border-left: 3px solid var(--arc-success) !important;
 }
 
 .concern-card {
-  border-left: 3px solid var(--arc-danger);
+  border-left: 3px solid var(--arc-danger) !important;
 }
 
 .opportunity-card {
-  border-left: 3px solid var(--arc-accent);
+  border-left: 3px solid var(--arc-border) !important;
+}
+
+/* --- Step checklist (Ad Consultant) --- */
+.step-item.done {
+  opacity: 0.6;
+}
+.step-item.locked {
+  opacity: 0.4;
+  pointer-events: none;
 }
