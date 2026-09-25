@@ -23,7 +23,7 @@
         <span class="badge bg-secondary mb-2">{{ idea.category|replace('_', ' ') }}</span>
         <h6 class="mb-2">{{ idea.title }}</h6>
         <p class="small mb-2">{{ idea.description }}</p>
-        <p class="small text-muted mb-0"><em>{{ idea.rationale }}</em></p>
+        <p class="small text-muted mb-0 text-truncate" title="{{ idea.rationale }}"><em>{{ idea.rationale }}</em></p>
       </div>
     </div>
   </div>
@@ -154,13 +154,13 @@
   <div class="card-header border-secondary">
     <h6 class="mb-0"><i class="bi bi-search me-2 text-warning"></i>Top Organic Queries</h6>
   </div>
-  <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+  <div class="table-responsive">
     <table class="table table-dark table-hover table-sm mb-0">
-      <thead class="table-secondary text-dark sticky-top">
+      <thead class="table-secondary text-dark">
         <tr><th>Query</th><th class="text-end">Clicks</th><th class="text-end">Impressions</th><th class="text-end">CTR</th><th class="text-end">Position</th></tr>
       </thead>
       <tbody>
-        {% for q in queries %}
+        {% for q in queries[:7] %}
         <tr>
           <td>{{ q.query }}</td>
           <td class="text-end">{{ q.clicks }}</td>
@@ -172,8 +172,30 @@
         </tr>
         {% endfor %}
       </tbody>
+      {% if queries|length > 7 %}
+      <tbody id="moreQueries" style="display:none;">
+        {% for q in queries[7:] %}
+        <tr>
+          <td>{{ q.query }}</td>
+          <td class="text-end">{{ q.clicks }}</td>
+          <td class="text-end">{{ q.impressions }}</td>
+          <td class="text-end">{{ (q.ctr * 100)|round(1) }}%</td>
+          <td class="text-end fw-bold {% if q.position <= 5 %}text-success{% elif q.position <= 10 %}text-warning{% else %}text-danger{% endif %}">
+            #{{ q.position|round(1) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% endif %}
     </table>
   </div>
+  {% if queries|length > 7 %}
+  <div class="card-footer border-secondary text-center py-2">
+    <button type="button" class="btn btn-sm btn-link text-decoration-none" onclick="toggleRows('moreQueries', this)">
+      Show all {{ queries|length }} queries
+    </button>
+  </div>
+  {% endif %}
 </div>
 
 <!-- Competitors -->
@@ -240,32 +262,42 @@
   <div class="col-lg-8">
     <div class="card border-secondary mb-4">
       <div class="card-header border-secondary"><h6 class="mb-0"><i class="bi bi-trophy me-2 text-warning"></i>Top Competitor Keywords</h6></div>
-      <div class="table-responsive" style="max-height: 350px; overflow-y:auto;">
+      <div class="table-responsive">
         <table class="table table-dark table-hover table-sm mb-0">
-          <thead class="table-secondary text-dark sticky-top">
+          <thead class="table-secondary text-dark">
             <tr><th>#</th><th>Keyword</th><th>Category</th><th class="text-end">Sites Using</th></tr>
           </thead>
           <tbody>
-            {% for kw in seo_data.aggregated %}
+            {% for kw in seo_data.aggregated[:8] %}
             <tr>
               <td class="text-muted">{{ loop.index }}</td>
               <td class="small">{{ kw.keyword }}</td>
-              <td>
-                <span class="badge
-                  {% if kw.category == 'Probate' %}bg-danger
-                  {% elif kw.category == 'Trust Planning' %}bg-warning text-dark
-                  {% elif kw.category == 'Legal Services' %}bg-info text-dark
-                  {% elif kw.category == 'Asset Protection' %}bg-success
-                  {% else %}bg-secondary{% endif %}">
-                  {{ kw.category }}
-                </span>
-              </td>
+              <td><span class="badge bg-secondary">{{ kw.category }}</span></td>
               <td class="text-end fw-bold">{{ kw.businesses }}</td>
             </tr>
             {% endfor %}
           </tbody>
+          {% if seo_data.aggregated|length > 8 %}
+          <tbody id="moreCompetitorKeywords" style="display:none;">
+            {% for kw in seo_data.aggregated[8:] %}
+            <tr>
+              <td class="text-muted">{{ loop.index + 8 }}</td>
+              <td class="small">{{ kw.keyword }}</td>
+              <td><span class="badge bg-secondary">{{ kw.category }}</span></td>
+              <td class="text-end fw-bold">{{ kw.businesses }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          {% endif %}
         </table>
       </div>
+      {% if seo_data.aggregated|length > 8 %}
+      <div class="card-footer border-secondary text-center py-2">
+        <button type="button" class="btn btn-sm btn-link text-decoration-none" onclick="toggleRows('moreCompetitorKeywords', this)">
+          Show all {{ seo_data.aggregated|length }} keywords
+        </button>
+      </div>
+      {% endif %}
     </div>
 
     {% if seo_data.businesses %}
@@ -356,5 +388,13 @@ async function generateIdeas() {
     btn.innerHTML = '<i class="bi bi-stars me-1"></i>Generate Ideas';
   }
 }
+
+function toggleRows(id, btn) {
+  const body = document.getElementById(id);
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? 'table-row-group' : 'none';
+  btn.textContent = hidden ? 'Show fewer' : btn.dataset.label;
+}
+document.querySelectorAll('.card-footer button[onclick^="toggleRows"]').forEach(b => b.dataset.label = b.textContent.trim());
 </script>
 {% endblock %}
