@@ -33,6 +33,16 @@ with app.app_context():
         ]:
             if _col not in _existing:
                 _conn.execute(text(f"ALTER TABLE clio_bookings ADD COLUMN {_col} {_typedef}"))
+
+        _existing_cp = {row[1] for row in _conn.execute(text("PRAGMA table_info(campaign_packages)"))}
+        for _col, _typedef in [
+            ("landing_page_mode",   "VARCHAR(16) DEFAULT 'existing'"),
+            ("landing_page_prompt", "TEXT"),
+            ("current_step",        "INTEGER DEFAULT 0"),
+            ("deployed_at",         "DATETIME"),
+        ]:
+            if _col not in _existing_cp:
+                _conn.execute(text(f"ALTER TABLE campaign_packages ADD COLUMN {_col} {_typedef}"))
         _conn.commit()
 
 # Start background scheduler and immediately kick off a full data refresh
@@ -145,15 +155,16 @@ def consultant():
 
 @app.route("/consultant/<int:pkg_id>")
 def consultant_review(pkg_id):
+    from engines import campaign_builder
     from models import CampaignPackage
     pkg = db.session.get(CampaignPackage, pkg_id)
     if not pkg:
         return jsonify({"error": "Not found"}), 404
+    steps = campaign_builder.get_steps(pkg)
     return render_template(
-        "consultant_review.html", pkg=pkg,
-        keywords=json.loads(pkg.keywords_json or "[]"),
-        headlines=json.loads(pkg.headlines_json or "[]"),
-        descriptions=json.loads(pkg.descriptions_json or "[]"),
+        "consultant_review.html", pkg=pkg, steps=steps, total_steps=len(steps),
+        keyword_count=len(json.loads(pkg.keywords_json or "[]")),
+        headline_count=len(json.loads(pkg.headlines_json or "[]")),
     )
 
 
@@ -184,6 +195,7 @@ def generate_campaign_package():
         budget_monthly=budget_monthly,
         location=data.get("location"),
         keyword_direction=data.get("keyword_direction", ""),
+        landing_page_mode=data.get("landing_page_mode", "existing"),
         landing_page_preference=data.get("landing_page_preference", ""),
     )
     if not started:
@@ -220,6 +232,38 @@ def reject_campaign_package(pkg_id):
     pkg.reviewed_at = datetime.utcnow()
     db.session.commit()
     return jsonify({"ok": True, "status": pkg.status})
+
+
+@app.route("/api/consultant/<int:pkg_id>/advance-step", methods=["POST"])
+def advance_campaign_step(pkg_id):
+    from engines import campaign_builder
+    from models import CampaignPackage
+    pkg = db.session.get(CampaignPackage, pkg_id)
+    if not pkg:
+        return jsonify({"error": "Not found"}), 404
+    if pkg.status != "approved":
+        return jsonify({"ok": False, "error": "Campaign must be approved first"}), 400
+    total_steps = len(campaign_builder.get_steps(pkg))
+    if pkg.current_step >= total_steps:
+        return jsonify({"ok": False, "error": "All steps already complete"}), 400
+    pkg.current_step += 1
+    db.session.commit()
+    return jsonify({"ok": True, "current_step": pkg.current_step, "total_steps": total_steps})
+
+
+@app.route("/api/consultant/<int:pkg_id>/deploy", methods=["POST"])
+def deploy_campaign_package(pkg_id):
+    from engines import campaign_builder
+    from models import CampaignPackage
+    pkg = db.session.get(CampaignPackage, pkg_id)
+    if not pkg:
+        return jsonify({"error": "Not found"}), 404
+    total_steps = len(campaign_builder.get_steps(pkg))
+    if pkg.current_step < total_steps:
+        return jsonify({"ok": False, "error": "Finish all the setup steps first"}), 400
+    pkg.deployed_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({"ok": True, "deployed_at": pkg.deployed_at.isoformat()})
 
 
 @app.route("/api/briefing/generate", methods=["POST"])

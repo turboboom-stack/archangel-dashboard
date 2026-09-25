@@ -131,4 +131,8 @@ AD_STRATEGY_RULES = {
     "estate_probate_split": {"estate_planning": 0.90, "probate": 0.10},
     "cpa_ceiling_default": 150,
     "calendly_url": "https://calendly.com/archangel-trust-cmartin/consultation",
+    # Never use "free consultation" language in any customer-facing copy (ads, landing
+    # pages, etc.) — established rule from Jordan, not a legal/compliance detail we can
+    # infer from context, so it has to be stated explicitly in every generation prompt.
+    "no_free_consultation_language": True,
 }

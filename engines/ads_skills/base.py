@@ -19,7 +19,7 @@ def business_rules_block():
                "within its existing budget.") if r["sd_status"] == "paused" \
               else "SD is active and can receive budget recommendations."
     split = r["estate_probate_split"]
-    return "\n".join([
+    lines = [
         "## Business Rules (must be followed in every recommendation)",
         "- Firm: Archangel Trust, estate planning and probate law, San Diego and Apple Valley, CA.",
         f"- San Diego budget status: {r['sd_status'].upper()} — {sd_note}",
@@ -28,7 +28,15 @@ def business_rules_block():
         f"trusts, {int(split['probate']*100)}% probate. Reduce probate's weight, don't eliminate it.",
         f"- Target CPA: under ${r['cpa_ceiling_default']}.",
         f"- Primary conversion goal: consultation bookings via {r['calendly_url']}.",
-    ])
+    ]
+    if r.get("no_free_consultation_language"):
+        lines.append(
+            "- NEVER use \"free consultation\" (or \"free call\", \"free meeting\", etc.) in any "
+            "customer-facing copy — ad headlines/descriptions, landing page briefs, or anything "
+            "else a prospect would read. Refer to it as a \"consultation\" or \"conversation\" "
+            "without the word \"free\"."
+        )
+    return "\n".join(lines)
 
 
 def monthly_target():

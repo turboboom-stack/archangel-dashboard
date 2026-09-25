@@ -79,9 +79,21 @@
     <!-- Step 5: Landing page -->
     <div class="wizard-step d-none" data-step="5">
       <h5 class="mb-3">Where should the ads send people?</h5>
-      <p class="text-muted small">Optional — leave blank and the consultant will suggest a page from the site.</p>
-      <input type="text" class="form-control bg-dark text-light border-secondary" id="landingInput"
-             placeholder="e.g. the Apple Valley landing page, or Contact">
+      <div class="d-flex flex-column gap-2 mb-3">
+        <label class="btn btn-outline-secondary text-start landing-mode-option active" data-value="existing">
+          <input type="radio" name="landing_mode" value="existing" class="d-none" checked>
+          <strong>Use a page on the site</strong>
+          <div class="small text-muted">The consultant will pick the best fit, or you can point it at one below.</div>
+        </label>
+        <label class="btn btn-outline-secondary text-start landing-mode-option" data-value="custom">
+          <input type="radio" name="landing_mode" value="custom" class="d-none">
+          <strong>Build a new custom page</strong>
+          <div class="small text-muted">Get a ready-to-use brief for your landing page tool instead.</div>
+        </label>
+      </div>
+      <label class="form-label small text-muted" id="landingInputLabel">Any preference on which page? (optional)</label>
+      <textarea class="form-control bg-dark text-light border-secondary" id="landingInput" rows="2"
+                placeholder="e.g. the Apple Valley landing page, or Contact"></textarea>
     </div>
 
     <!-- Nav buttons -->
@@ -146,7 +158,7 @@
 <script>
 let currentStep = 1;
 const TOTAL_STEPS = 5;
-const answers = { goal: 'more_consultations', goal_freeform: '', budget_monthly: null, location: null, keyword_direction: '', landing_page_preference: '' };
+const answers = { goal: 'more_consultations', goal_freeform: '', budget_monthly: null, location: null, keyword_direction: '', landing_page_mode: 'existing', landing_page_preference: '' };
 
 function showStep(n) {
   document.querySelectorAll('.wizard-step').forEach(el => {
@@ -227,6 +239,23 @@ document.querySelectorAll('.location-option').forEach(label => {
     document.querySelectorAll('.location-option').forEach(l => l.classList.remove('active'));
     label.classList.add('active');
     answers.location = label.dataset.value;
+  });
+});
+
+document.querySelectorAll('.landing-mode-option').forEach(label => {
+  label.addEventListener('click', () => {
+    document.querySelectorAll('.landing-mode-option').forEach(l => l.classList.remove('active'));
+    label.classList.add('active');
+    answers.landing_page_mode = label.dataset.value;
+    const inputLabel = document.getElementById('landingInputLabel');
+    const input = document.getElementById('landingInput');
+    if (label.dataset.value === 'custom') {
+      inputLabel.textContent = 'Anything the new page should cover? (optional)';
+      input.placeholder = 'e.g. emphasize a free first consultation, focus on living trusts';
+    } else {
+      inputLabel.textContent = 'Any preference on which page? (optional)';
+      input.placeholder = 'e.g. the Apple Valley landing page, or Contact';
+    }
   });
 });
 

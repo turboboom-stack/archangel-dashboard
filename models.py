@@ -270,7 +270,8 @@ class CampaignPackage(db.Model):
     budget_monthly = db.Column(db.Float)
     location = db.Column(db.String(8))  # SD / AV / BOTH
     keyword_direction = db.Column(db.Text, nullable=True)
-    landing_page_preference = db.Column(db.Text, nullable=True)
+    landing_page_mode = db.Column(db.String(16), default="existing")  # existing / custom
+    landing_page_preference = db.Column(db.Text, nullable=True)  # notes either mode
 
     # Generated output
     campaign_name = db.Column(db.String(256))
@@ -280,11 +281,15 @@ class CampaignPackage(db.Model):
     descriptions_json = db.Column(db.Text, default="[]")   # ["...", ...]
     budget_breakdown = db.Column(db.Text)
     targeting = db.Column(db.Text)
-    landing_page_suggestion = db.Column(db.Text)
-    instructions = db.Column(db.Text)
+    landing_page_suggestion = db.Column(db.Text)   # existing-page pick + why
+    landing_page_prompt = db.Column(db.Text, nullable=True)  # brief for the external landing-page tool (custom mode)
 
     status = db.Column(db.String(20), default="draft")  # draft / approved / rejected
     reviewed_at = db.Column(db.DateTime, nullable=True)
+
+    # Step-by-step implementation tracking
+    current_step = db.Column(db.Integer, default=0)  # how many steps marked done
+    deployed_at = db.Column(db.DateTime, nullable=True)
 
 
 class OpportunityIdea(db.Model):
