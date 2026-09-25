@@ -16,7 +16,7 @@ def fetch():
         conn = _connect()
         cur = conn.cursor()
     except Exception as e:
-        return {"error": str(e), "keywords": [], "businesses": [], "stats": {}}
+        return {"error": str(e), "keywords": [], "businesses": [], "aggregated": [], "stats": {}}
 
     try:
         # Top keywords across all businesses
