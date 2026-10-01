@@ -1,6 +1,41 @@
 {% extends "base.html" %}
 {% block title %}{{ pkg.campaign_name }} — Archangel{% endblock %}
 
+{% macro render_step_body(step) %}
+  {% if step.kind == 'text' %}
+    <p class="small mb-0">{{ step.body | safe }}</p>
+
+  {% elif step.kind == 'keywords' %}
+    <div class="table-responsive">
+      <table class="table table-sm table-dark mb-0">
+        <tbody>
+          {% for kw in step.keywords %}
+          <tr><td class="small">{{ kw.keyword }}</td><td class="small text-muted text-end">{{ kw.match_type }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  {% elif step.kind == 'ad_copy' %}
+    <p class="small text-muted fw-bold mb-1">Headlines</p>
+    <ul class="small mb-3">{% for h in step.headlines %}<li>{{ h }}</li>{% endfor %}</ul>
+    <p class="small text-muted fw-bold mb-1">Descriptions</p>
+    <ul class="small mb-0">{% for d in step.descriptions %}<li>{{ d }}</li>{% endfor %}</ul>
+
+  {% elif step.kind == 'landing' %}
+    {% if step.mode == 'custom' %}
+      <div class="bg-black rounded p-3 border border-secondary position-relative">
+        <pre class="small mb-0" id="landingPrompt" style="white-space: pre-wrap;">{{ step.prompt }}</pre>
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="copyLandingPrompt()">
+        <i class="bi bi-clipboard me-1"></i>Copy brief
+      </button>
+    {% else %}
+      <p class="small mb-0">{{ step.suggestion }}</p>
+    {% endif %}
+  {% endif %}
+{% endmacro %}
+
 {% block content %}
 <div class="mb-4">
   <a href="/consultant" class="text-muted small text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Ad Consultant</a>
@@ -43,6 +78,21 @@
         <span class="text-muted small">Landing page</span>
         <span class="small">{% if pkg.landing_page_mode == 'custom' %}Custom page{% else %}Existing page{% endif %}</span>
       </div>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-secondary mt-3" data-bs-toggle="collapse"
+            data-bs-target="#campaignDetails" aria-expanded="false" aria-controls="campaignDetails">
+      <i class="bi bi-chevron-down me-1"></i>Show full campaign details
+    </button>
+  </div>
+  <div class="collapse" id="campaignDetails">
+    <div class="card-body pt-0 px-4 pb-4 text-start">
+      {% set labels = ['Budget', 'Targeting', 'Keywords', 'Ad copy', 'Landing page'] %}
+      {% for step in steps[2:7] %}
+      <div class="pt-3 {% if not loop.last %}pb-3 border-bottom border-secondary{% endif %}">
+        <h6 class="mb-2">{{ labels[loop.index0] }}</h6>
+        {{ render_step_body(step) }}
+      </div>
+      {% endfor %}
     </div>
   </div>
 </div>
@@ -97,39 +147,10 @@
 
       {% if n == pkg.current_step + 1 %}
       <div class="mt-3">
-        {% if step.kind == 'text' %}
-          <p class="small mb-0">{{ step.body | safe }}</p>
-
-        {% elif step.kind == 'keywords' %}
-          <div class="table-responsive">
-            <table class="table table-sm table-dark mb-0">
-              <tbody>
-                {% for kw in step.keywords %}
-                <tr><td class="small">{{ kw.keyword }}</td><td class="small text-muted text-end">{{ kw.match_type }}</td></tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-
-        {% elif step.kind == 'ad_copy' %}
-          <p class="small text-muted fw-bold mb-1">Headlines</p>
-          <ul class="small mb-3">{% for h in step.headlines %}<li>{{ h }}</li>{% endfor %}</ul>
-          <p class="small text-muted fw-bold mb-1">Descriptions</p>
-          <ul class="small mb-0">{% for d in step.descriptions %}<li>{{ d }}</li>{% endfor %}</ul>
-
-        {% elif step.kind == 'landing' %}
-          {% if step.mode == 'custom' %}
-            <p class="small text-muted mb-2">Build this page in your landing page tool first, using the brief below — then come back and set the URL as this campaign's final URL.</p>
-            <div class="bg-black rounded p-3 border border-secondary position-relative">
-              <pre class="small mb-0" id="landingPrompt" style="white-space: pre-wrap;">{{ step.prompt }}</pre>
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="copyLandingPrompt()">
-              <i class="bi bi-clipboard me-1"></i>Copy brief
-            </button>
-          {% else %}
-            <p class="small mb-0">{{ step.suggestion }}</p>
-          {% endif %}
+        {% if step.kind == 'landing' and step.mode == 'custom' %}
+          <p class="small text-muted mb-2">Build this page in your landing page tool first, using the brief below — then come back and set the URL as this campaign's final URL.</p>
         {% endif %}
+        {{ render_step_body(step) }}
 
         <button type="button" class="btn btn-warning btn-sm mt-3" onclick="advanceStep()">
           <i class="bi bi-check-lg me-1"></i>Mark Step Done
@@ -190,6 +211,13 @@ async function deployCampaign() {
   } catch (e) {
     alert('Error: ' + e.message);
   }
+}
+
+const details = document.getElementById('campaignDetails');
+if (details) {
+  const toggle = document.querySelector('[data-bs-target="#campaignDetails"]');
+  details.addEventListener('shown.bs.collapse', () => toggle.innerHTML = '<i class="bi bi-chevron-up me-1"></i>Hide details');
+  details.addEventListener('hidden.bs.collapse', () => toggle.innerHTML = '<i class="bi bi-chevron-down me-1"></i>Show full campaign details');
 }
 
 function copyLandingPrompt() {
