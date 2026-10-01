@@ -221,8 +221,21 @@ def get_last_result():
 #   kind "ad_copy"   — renders pkg's headlines/descriptions
 #   kind "landing"   — renders the existing-page suggestion or the custom-page prompt
 
+def format_keyword(kw):
+    """Google Ads match-type syntax: [exact], "phrase", broad with no punctuation."""
+    text = kw.get("keyword", "").strip().strip('[]"').strip()
+    match = (kw.get("match_type") or "").lower()
+    if match == "exact":
+        return f"[{text}]"
+    if match == "phrase":
+        return f'"{text}"'
+    return text
+
+
 def get_steps(pkg):
     keywords = json.loads(pkg.keywords_json or "[]")
+    for kw in keywords:
+        kw["formatted"] = format_keyword(kw)
     headlines = json.loads(pkg.headlines_json or "[]")
     descriptions = json.loads(pkg.descriptions_json or "[]")
 

@@ -6,15 +6,21 @@
     <p class="small mb-0">{{ step.body | safe }}</p>
 
   {% elif step.kind == 'keywords' %}
+    <p class="small text-muted mb-2">Paste these exactly as shown. The punctuation sets the match type: [brackets] for exact, "quotes" for phrase, none for broad.</p>
     <div class="table-responsive">
       <table class="table table-sm table-dark mb-0">
         <tbody>
           {% for kw in step.keywords %}
-          <tr><td class="small">{{ kw.keyword }}</td><td class="small text-muted text-end">{{ kw.match_type }}</td></tr>
+          <tr><td class="small font-monospace">{{ kw.formatted }}</td><td class="small text-muted text-end">{{ kw.match_type }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+    <textarea class="d-none" id="keywordList">{% for kw in step.keywords %}{{ kw.formatted }}
+{% endfor %}</textarea>
+    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="copyKeywords()">
+      <i class="bi bi-clipboard me-1"></i>Copy keywords
+    </button>
 
   {% elif step.kind == 'ad_copy' %}
     <p class="small text-muted fw-bold mb-1">Headlines</p>
@@ -218,6 +224,11 @@ if (details) {
   const toggle = document.querySelector('[data-bs-target="#campaignDetails"]');
   details.addEventListener('shown.bs.collapse', () => toggle.innerHTML = '<i class="bi bi-chevron-up me-1"></i>Hide details');
   details.addEventListener('hidden.bs.collapse', () => toggle.innerHTML = '<i class="bi bi-chevron-down me-1"></i>Show full campaign details');
+}
+
+function copyKeywords() {
+  const text = document.getElementById('keywordList').value.trim();
+  navigator.clipboard.writeText(text).then(() => showToast('Keywords copied'));
 }
 
 function copyLandingPrompt() {
