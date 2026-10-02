@@ -117,7 +117,7 @@ ASPEN_INGEST_URL = os.environ.get("ASPEN_INGEST_URL") or _env.get(
     "ASPEN_INGEST_URL", "https://jwzvioaygipzejiteptp.supabase.co/functions/v1/ingest-event"
 )
 ASPEN_ADVISOR_ID = os.environ.get("ASPEN_ADVISOR_ID") or _env.get(
-    "ASPEN_ADVISOR_ID", "0069cf21-f542-40d3-9c5e-29cdfea18311"
+    "ASPEN_ADVISOR_ID", "8e11b468-032d-4f09-ae0e-f6b8e1cada91"
 )
 # Optional — set if the endpoint turns out to require an Authorization header.
 ASPEN_API_KEY = os.environ.get("ASPEN_API_KEY") or _env.get("ASPEN_API_KEY", "")
