@@ -24,6 +24,8 @@ GA4_CONVERSION_EVENTS = [
     "ads_conversion_Contact_Us_1",
     "form_start",
     "form_submit",
+    "phone_click",
+    "calendly_booked",
 ]
 ARCHANGEL_DIR = os.path.dirname(BASE_DIR)
 
