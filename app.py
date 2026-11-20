@@ -6,7 +6,7 @@ import json
 import os
 import re
 from datetime import datetime, date, timedelta
-from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
+from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, abort
 from models import db, CacheMetadata, ClioBooking, ActionItem, AdRecommendation
 import config
 
@@ -411,9 +411,9 @@ def ad_strategy():
 @app.route("/roadmap")
 def roadmap():
     import roadmap_plan as plan
-    from models import RoadmapTask, RoadmapMetric, LeadMagnetSignup
+    from models import RoadmapTask, RoadmapMetric, LeadMagnetSignup, BlogDraft
 
-    done = {t.task_key for t in RoadmapTask.query.filter_by(done=True).all()}
+    done ={t.task_key for t in RoadmapTask.query.filter_by(done=True).all()}
     signups = dict(db.session.query(LeadMagnetSignup.campaign_key, db.func.count())
                    .group_by(LeadMagnetSignup.campaign_key).all())
     bookings = dict(db.session.query(ClioBooking.campaign, db.func.count())
@@ -431,8 +431,9 @@ def roadmap():
         tot["ctr"] = tot["clicks"] / tot["impressions"] if tot["impressions"] else None
         tot["lp_cvr"] = tot["leads"] / tot["lp_visits"] if tot["lp_visits"] else None
         tot["cpl"] = tot["cost"] / tot["leads"] if tot["leads"] else None
+        drafts = BlogDraft.query.filter_by(campaign_key=c["key"]).order_by(BlogDraft.created_at.desc()).all()
         campaigns.append({**c, "tasks": tasks, "done_count": sum(k in done for k, _ in tasks),
-                          "metrics": metrics, "totals": tot})
+                          "metrics": metrics, "totals": tot, "drafts": drafts})
 
     week0_done = sum(k in done for k, _ in plan.WEEK0_TASKS)
     total_tasks = len(plan.all_task_keys())
@@ -453,6 +454,41 @@ def toggle_roadmap_task(task_key):
     db.session.add(task)
     db.session.commit()
     return jsonify({"ok": True, "done": task.done})
+
+
+@app.route("/api/roadmap/blog/<campaign_key>/generate", methods=["POST"])
+def generate_blog_draft(campaign_key):
+    import roadmap_plan as plan
+    from models import BlogDraft
+    from engines import blog_writer
+    if campaign_key not in plan.CAMPAIGN_KEYS:
+        return jsonify({"error": "unknown campaign"}), 404
+    if BlogDraft.query.filter_by(campaign_key=campaign_key, status="generating").first():
+        return jsonify({"error": "a draft is already being written"}), 409
+    draft = blog_writer.start(app, campaign_key)
+    return jsonify({"ok": True, "id": draft.id})
+
+
+@app.route("/api/roadmap/blog/<int:draft_id>/status", methods=["POST"])
+def set_blog_draft_status(draft_id):
+    from models import BlogDraft
+    status = (request.get_json(silent=True) or {}).get("status")
+    if status not in ("draft", "approved", "sent_to_aspen"):
+        return jsonify({"error": "bad status"}), 400
+    draft = db.session.get(BlogDraft, draft_id) or abort(404)
+    draft.status = status
+    draft.updated_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/roadmap/blog/<int:draft_id>")
+def view_blog_draft(draft_id):
+    import roadmap_plan as plan
+    from models import BlogDraft
+    draft = db.session.get(BlogDraft, draft_id) or abort(404)
+    campaign = next((c for c in plan.CAMPAIGNS if c["key"] == draft.campaign_key), None)
+    return render_template("blog_draft.html", draft=draft, campaign=campaign)
 
 
 @app.route("/api/roadmap/metric", methods=["POST"])

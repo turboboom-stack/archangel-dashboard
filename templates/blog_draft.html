@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ draft.title }} — Blog Draft{% endblock %}
+
+{% block content %}
+<style>
+  .bd-body { max-width: 760px; font-size: 1rem; line-height: 1.7; }
+  .bd-body h2 { font-family: var(--arc-font-display); font-size: 1.4rem; margin-top: 1.8rem; }
+  .bd-body h3 { font-size: 1.1rem; margin-top: 1.3rem; }
+</style>
+
+<a href="/roadmap#c-{{ draft.campaign_key }}" class="small text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Back to {{ campaign.name if campaign else 'roadmap' }}</a>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 my-3">
+  <div>
+    <small class="text-muted">Campaign blog draft · {{ campaign.name if campaign }} · {{ draft.word_count }} words</small>
+    <h3 class="mb-1" style="font-family: var(--arc-font-display);">{{ draft.title }}</h3>
+    <div class="small text-muted">/blog/{{ draft.slug }} · target "{{ draft.target_kw }}"</div>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <button class="btn btn-sm btn-outline-warning" data-copy="bd-html"><i class="bi bi-code-slash me-1"></i>Copy HTML</button>
+    <button class="btn btn-sm btn-outline-warning" data-copy="bd-meta"><i class="bi bi-clipboard me-1"></i>Copy meta</button>
+    <button class="btn btn-sm {% if draft.status == 'approved' %}btn-warning{% else %}btn-outline-warning{% endif %}" data-status="approved">Approve</button>
+    <button class="btn btn-sm {% if draft.status == 'sent_to_aspen' %}btn-success{% else %}btn-outline-warning{% endif %}" data-status="sent_to_aspen">Mark sent to Aspen</button>
+  </div>
+</div>
+
+{% if draft.error %}
+<div class="alert alert-danger small"><i class="bi bi-exclamation-triangle me-1"></i>{{ draft.error }}</div>
+{% endif %}
+<div class="alert alert-secondary small mb-3"><i class="bi bi-shield-check me-1"></i>Attorney review required before publishing: confirm every legal figure and Probate Code citation.</div>
+
+<div class="card bg-black border-secondary mb-3"><div class="card-body small">
+  <strong>Meta description:</strong> <span id="bd-meta">{{ draft.meta_description }}</span>
+</div></div>
+
+<div class="card bg-black border-secondary"><div class="card-body bd-body">
+  {{ draft.body_html|safe }}
+</div></div>
+
+<textarea id="bd-html" class="d-none">{{ draft.body_html }}</textarea>
+
+<script>
+document.querySelectorAll('[data-copy]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var el = document.getElementById(b.dataset.copy);
+    navigator.clipboard.writeText(el.value !== undefined ? el.value : el.textContent).then(function () {
+      b.innerHTML = '<i class="bi bi-check2 me-1"></i>Copied';
+    });
+  });
+});
+document.querySelectorAll('[data-status]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    fetch('/api/roadmap/blog/{{ draft.id }}/status', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({status: b.dataset.status})}).then(function (r) { if (r.ok) location.reload(); });
+  });
+});
+</script>
+{% endblock %}

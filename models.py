@@ -353,3 +353,20 @@ class LeadMagnetSignup(db.Model):
     name = db.Column(db.String(256))
     phone = db.Column(db.String(64))
     aspen_sent = db.Column(db.Boolean, default=False)
+
+
+class BlogDraft(db.Model):
+    """Campaign blog drafts written in the dashboard; Aspen publishes the live blog."""
+    __tablename__ = "blog_drafts"
+    id = db.Column(db.Integer, primary_key=True)
+    campaign_key = db.Column(db.String(32), nullable=False)
+    target_kw = db.Column(db.String(256))
+    title = db.Column(db.String(512))
+    slug = db.Column(db.String(512))
+    meta_description = db.Column(db.Text)
+    body_html = db.Column(db.Text)
+    word_count = db.Column(db.Integer)
+    status = db.Column(db.String(20), default="generating")  # generating / draft / approved / sent_to_aspen / failed
+    error = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)

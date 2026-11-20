@@ -37,9 +37,10 @@ FINDINGS = [
                   "not the attorney consultation link (calendly.com/archangel-trust-cmartin/consultation). Confirm which is correct.",
     },
     {
-        "severity": "warning",
-        "title": "Blog publishing stopped Aug 21",
-        "detail": "34 posts, none new in 3 months. The weekly cadence this plan needs has to restart.",
+        "severity": "info",
+        "title": "Blog: Aspen publishes, the dashboard drafts",
+        "detail": "Aspen runs the live blog. Each campaign's Blog tab writes a draft built on that campaign's keywords "
+                  "and landing page; review it here and hand it to Aspen to publish.",
     },
     {
         "severity": "warning",
@@ -248,7 +249,7 @@ WEEK0_TASKS = [
     ("w0-ga4", "Verify gtag G-X5TNYWXNXM belongs to GA4 property 390363293; fix the tag in Webflow site settings and republish"),
     ("w0-ads-tag", "Install the Google Ads conversion tag (or import GA4 key events form_submit + calendly_booked into Ads)"),
     ("w0-calendly", "Confirm the correct booking link (site uses cameronwoodbury/archangel-financial-introduction-trust)"),
-    ("w0-scheduler", "Restart the weekly blog scheduler (no posts since Aug 21)"),
+    ("w0-scheduler", "Agree the blog hand-off with Aspen: the dashboard drafts one campaign post per week, Aspen publishes it"),
     ("w0-dedupe", "301 the 5 duplicate 'when probate is required/needed' posts to /blog/when-probate-is-not-required-california"),
     ("w0-clio", "Re-auth Clio (bookings last synced Sep 24) so campaign bookings show here"),
     ("w0-webhook", "Point every landing-page form's Webflow webhook to /webhook/lead-magnet (sends lead + campaign to Aspen)"),
@@ -256,7 +257,7 @@ WEEK0_TASKS = [
 ]
 
 CAMPAIGN_TASK_TEMPLATE = [
-    ("blog", "Publish the new blog post + add a lead-magnet CTA block to the source blogs"),
+    ("blog", "Generate the blog draft (Blog tab), review it, send it to Aspen to publish, and add a guide CTA to the source blogs"),
     ("magnet", "Design the lead-magnet PDF and upload it to Webflow assets"),
     ("lp", "Build the landing page in Webflow (copy above), noindex until launch"),
     ("form", "Add the guide form (name, email, phone); hidden field campaign=<key>; webhook to /webhook/lead-magnet"),

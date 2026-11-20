@@ -147,7 +147,7 @@
     <div><small class="text-muted">Week {{ c.week }} · {{ c.dates }}</small>
       <h5 class="mb-0">{{ c.name }}</h5></div>
     <ul class="nav nav-pills small" role="tablist">
-      {% for tab, label in [('strategy','Strategy'),('ads','Ad'),('lp','Landing page'),('email','Aspen sequence'),('tasks','Checklist'),('report','Report')] %}
+      {% for tab, label in [('strategy','Strategy'),('blog','Blog'),('ads','Ad'),('lp','Landing page'),('email','Aspen sequence'),('tasks','Checklist'),('report','Report')] %}
       <li class="nav-item"><button class="nav-link py-1 px-2 {% if loop.first %}active{% endif %}" data-bs-toggle="pill" data-bs-target="#{{ c.key }}-{{ tab }}" type="button">{{ label }}{% if tab == 'tasks' %} <span class="badge bg-secondary">{{ c.done_count }}/{{ c.tasks|length }}</span>{% endif %}</button></li>
       {% endfor %}
     </ul>
@@ -178,6 +178,43 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="tab-pane fade" id="{{ c.key }}-blog">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div>
+          <div class="fw-bold">{{ c.new_blog.title }}</div>
+          <div class="text-muted">Target: "{{ c.new_blog.target_kw }}" · links to {{ c.landing_page.slug }} and the {{ c.lead_magnet.title }}</div>
+        </div>
+        <button class="btn btn-sm btn-warning rm-gen" data-key="{{ c.key }}" {% if c.drafts and c.drafts[0].status == 'generating' %}disabled{% endif %}>
+          <i class="bi bi-magic me-1"></i>{% if c.drafts %}Write another draft{% else %}Generate draft{% endif %}
+        </button>
+      </div>
+      {% if c.drafts %}
+      <div class="table-responsive">
+        <table class="table table-dark table-sm small mb-0 align-middle">
+          <thead><tr><th>Draft</th><th>Words</th><th>Status</th><th>Created</th><th></th></tr></thead>
+          <tbody>
+          {% for d in c.drafts %}
+            <tr>
+              <td>{% if d.status in ('draft','approved','sent_to_aspen') %}<a href="/roadmap/blog/{{ d.id }}">{{ d.title }}</a>{% else %}{{ d.title }}{% endif %}
+                {% if d.error %}<div class="text-danger">{{ d.error }}</div>{% endif %}</td>
+              <td>{{ d.word_count or '—' }}</td>
+              <td>{% if d.status == 'generating' %}<span class="spinner-border spinner-border-sm me-1"></span>Writing…
+                  {% elif d.status == 'failed' %}<span class="badge bg-danger">Failed</span>
+                  {% elif d.status == 'sent_to_aspen' %}<span class="badge bg-success">Sent to Aspen</span>
+                  {% elif d.status == 'approved' %}<span class="badge bg-warning">Approved</span>
+                  {% else %}<span class="badge bg-secondary">Draft</span>{% endif %}</td>
+              <td>{{ d.created_at.strftime('%b %-d, %-I:%M %p') }}</td>
+              <td class="text-end">{% if d.status in ('draft','approved','sent_to_aspen') %}<a class="btn btn-sm btn-outline-warning" href="/roadmap/blog/{{ d.id }}">Open</a>{% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-muted">No draft yet. Generating takes about a minute; the draft stays here for review and is never posted to Webflow.</div>
+      {% endif %}
     </div>
 
     <div class="tab-pane fade" id="{{ c.key }}-ads">
@@ -267,6 +304,17 @@
 {% endfor %}
 
 <script>
+document.querySelectorAll('.rm-gen').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    btn.disabled = true;
+    fetch('/api/roadmap/blog/' + btn.dataset.key + '/generate', {method: 'POST'})
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'failed'); }); })
+      .then(function () { location.hash = 'c-' + btn.dataset.key; location.reload(); })
+      .catch(function (e) { btn.disabled = false; alert(e.message); });
+  });
+});
+if (document.querySelector('.spinner-border')) setTimeout(function () { location.reload(); }, 15000);
+
 document.querySelectorAll('.rm-task').forEach(function (li) {
   var box = li.querySelector('input');
   li.addEventListener('click', function (e) {
