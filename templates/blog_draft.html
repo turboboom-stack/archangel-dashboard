@@ -19,8 +19,9 @@
   </div>
   <div class="d-flex flex-wrap gap-2">
     {% if draft.status == 'draft' %}
-      <button class="btn btn-sm btn-warning" id="bd-send"><i class="bi bi-send me-1"></i>Send for approval</button>
-    {% elif draft.status == 'changes_requested' %}
+      <button class="btn btn-sm btn-warning" id="bd-send"><i class="bi bi-envelope me-1"></i>Email this one to Victoria &amp; Chris</button>
+    {% endif %}
+    {% if draft.status == 'changes_requested' or (draft.status == 'in_review' and reviews.values()|selectattr('decision', 'equalto', 'changes_requested')|list) %}
       <button class="btn btn-sm btn-warning" id="bd-revise"><i class="bi bi-arrow-repeat me-1"></i>Revise with owners' notes</button>
     {% elif draft.status == 'approved' %}
       <button class="btn btn-sm btn-outline-warning" id="bd-published"><i class="bi bi-check2-circle me-1"></i>Mark published by Aspen</button>
@@ -38,20 +39,20 @@
     <strong>Owner approval</strong>
     <span>{% if draft.status == 'approved' %}<span class="badge bg-success">Approved: master document</span>
       {% elif draft.status == 'published' %}<span class="badge bg-success">Published</span>
-      {% elif draft.status == 'in_review' %}<span class="badge bg-warning">With Chris &amp; Victoria</span>
+      {% elif draft.status == 'in_review' %}<span class="badge bg-warning">With Victoria{% if draft.sent_for_review_at %} · emailed {{ draft.sent_for_review_at.strftime('%b %-d') }}{% endif %}</span>
       {% elif draft.status == 'changes_requested' %}<span class="badge bg-danger">Changes requested</span>
       {% else %}<span class="badge bg-secondary">Not sent yet</span>{% endif %}</span>
   </div>
   {% if review_url %}
   <div class="input-group input-group-sm mb-2">
-    <span class="input-group-text">Review link for owners</span>
+    <span class="input-group-text">Review link (already emailed)</span>
     <input class="form-control" id="bd-link" value="{{ review_url }}" readonly>
     <button class="btn btn-outline-warning" data-copy="bd-link">Copy</button>
   </div>
   {% endif %}
   {% for r in plan.REVIEWERS %}{% set rv = reviews.get(r) %}
   <div class="py-1 border-top border-secondary">
-    <strong>{{ r }}:</strong>
+    <strong>{{ r }}{% if r == plan.APPROVER %} (final approval){% endif %}:</strong> <span class="text-muted">{{ plan.REVIEWER_EMAILS[r] }}</span> ·
     {% if rv %}{{ 'Approved' if rv.decision == 'approved' else 'Changes requested' }} <span class="text-muted">· {{ rv.created_at.strftime('%b %-d, %-I:%M %p') }}</span>
       {% if rv.note %}<div class="text-muted">"{{ rv.note }}"</div>{% endif %}
     {% else %}<span class="text-muted">waiting</span>{% endif %}
@@ -90,7 +91,9 @@ function post(url, body) {
 }
 var send = document.getElementById('bd-send');
 if (send) send.addEventListener('click', function () {
+  if (!confirm('Email this draft to {{ plan.REVIEWER_EMAILS.values()|join(" and ") }} now? (To send all four in one email, use the button on the Roadmap timeline.)')) return;
   post('/api/roadmap/blog/{{ draft.id }}/send').catch(function (e) {
+    if (e.message.indexOf('flagged') === -1) { alert(e.message); throw e; }
     if (confirm(e.message + '\n\nSend anyway?')) return post('/api/roadmap/blog/{{ draft.id }}/send', {force: true});
     throw e;
   }).then(function () { location.reload(); }).catch(function () {});

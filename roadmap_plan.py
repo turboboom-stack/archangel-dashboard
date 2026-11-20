@@ -15,17 +15,23 @@ BOOKING_URL = "https://calendly.com/archangel-trust-cmartin/consultation"
 SITE = "https://www.archangeltrust.com"
 DASHBOARD_URL = "https://aa-dash.up.railway.app"
 FIRM_NAME = "ArchAngel Trust and Probate Services"
-REVIEWERS = ["Chris", "Victoria"]
+REVIEWERS = ["Victoria", "Chris"]
+APPROVER = "Victoria"
+REVIEWER_EMAILS = {"Victoria": "vmartin@archangeltrust.com", "Chris": "cmartin@archangeltrust.com"}
+NOTIFY_EMAIL = "Turboboomproduction@gmail.com"
+REMINDER_DAYS = 2
 
 # Owner approval drives the whole timeline: nothing for a campaign (landing page, ads,
-# emails) is built until Chris and Victoria approve its blog, and the approved blog is
-# then the master document for every figure, process and consequence the campaign states.
+# emails) is built until Victoria approves its blog (Chris may also review and comment),
+# and the approved blog is then the master document for every figure, process and
+# consequence the campaign states.
 DRAFTS_SENT = "2026-11-23"
-REVIEW_NOTE = ("All four drafts go to Chris and Victoria on Mon Nov 23 (Thanksgiving week), so they can read "
-               "in one sitting or spread it out. Each approval date leaves 6-14 days of review time. After "
-               "approval: 2 days to bring the landing page, ads, guide and emails in line with the approved "
-               "blog, then 3 days for the Aspen agent to build. If an approval slips, that campaign's launch slips "
-               "by the same amount. The others keep going.")
+REVIEW_NOTE = ("All four drafts go to Victoria and Chris in one email on Mon Nov 23 (Thanksgiving week), so they "
+               "can read in one sitting or spread it out. Victoria's approval releases each campaign; Chris can "
+               "comment too. Each approval date leaves 6-14 days of review time, and Victoria gets a reminder "
+               "2 days before any date she hasn't decided on. After approval: 2 days to bring the landing page, "
+               "ads, guide and emails in line with the approved blog, then 3 days for the Aspen agent to build. "
+               "If an approval slips, that campaign's launch slips by the same amount. The others keep going.")
 GEO = "Apple Valley, Victorville, Hesperia, Barstow (+15 mi) — SD paused"
 
 DATA_AS_OF = "2026-11-20"
@@ -59,7 +65,7 @@ FINDINGS = [
     {
         "severity": "info",
         "title": "Owner approval sets the pace",
-        "detail": "Each campaign's blog goes to Chris and Victoria first. Once both approve, it becomes the master "
+        "detail": "Each campaign's blog goes to Victoria and Chris first. Once Victoria approves, it becomes the master "
                   "document: the landing page, ads, guide and emails are rewritten to match it, then built by the Aspen agent.",
     },
     {
@@ -268,7 +274,7 @@ CAMPAIGNS = sorted(_CAMPAIGNS, key=lambda c: c["week"])
 # Week 0 (Nov 23-27): site fixes happen in the Aspen builder, so each task carries a prompt
 # for the Aspen agent.
 WEEK0_TASKS = [
-    ("w0-send", "Send all 4 blog drafts to Chris & Victoria for approval (Blog tab → Send for approval)", None),
+    ("w0-send", "Email all 4 blog drafts to Victoria & Chris (Timeline → Email drafts to Victoria & Chris)", None),
     ("w0-ga4", "Restore GA4 tracking on every page", """Please check the Google Analytics 4 tag on archangeltrust.com. GA4 sessions dropped from ~40/day to ~3/day starting Oct 14, 2026, while Google Search Console still shows normal traffic, so the tag is missing or wrong on most pages.
 
 1. Tell me which GA4 measurement ID(s) are installed today and on which pages. Right now I can see gtag.js with G-X5TNYWXNXM on the home page, /contact, /request-a-consultation and /blog posts.
@@ -297,8 +303,8 @@ Before redirecting, move any unique, useful sections from those posts into the k
 
 CAMPAIGN_TASK_TEMPLATE = [
     # (id, text, unlocked only after both owners approve the blog)
-    ("send", "Send the blog draft to Chris & Victoria (Blog tab)", False),
-    ("approved", "Chris & Victoria approved the blog (updates automatically)", False),
+    ("send", "Send the blog draft to Victoria & Chris (one email for all four, from the Timeline)", False),
+    ("approved", "Victoria approved the blog (updates automatically)", False),
     ("reconcile", "Bring the landing page, ad copy, guide and emails in line with the approved blog (figures, process, consequences)", True),
     ("blog-live", "Aspen agent: publish the approved blog (copy the prompt)", True),
     ("magnet", "Make the guide PDF from the approved blog", True),

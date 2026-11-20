@@ -44,11 +44,11 @@
 
   <div class="panel mb-4">
     <div class="fw-semibold mb-2">Why this post matters</div>
-    <p class="mb-2">Once approved, this post becomes the reference for the campaign: the landing page, ads, guide and follow-up emails all take their figures, steps and wording from it. Please check the legal figures and Probate Code references especially carefully.</p>
+    <p class="mb-2">Victoria's approval releases this campaign; Chris is welcome to approve or add notes too. Once approved, this post becomes the reference for the campaign: the landing page, ads, guide and follow-up emails all take their figures, steps and wording from it. Please check the legal figures and Probate Code references especially carefully.</p>
     <div class="d-flex flex-wrap gap-4 small">
       {% for r in plan.REVIEWERS %}
         {% set rv = reviews.get(r) %}
-        <div>{{ r }}:
+        <div>{{ r }}{% if r == plan.APPROVER %} (final approval){% endif %}:
           {% if rv and rv.decision == 'approved' %}<span class="status-ok">Approved</span>
           {% elif rv %}<span class="status-no">Changes requested</span>
           {% else %}<span class="meta">Waiting</span>{% endif %}

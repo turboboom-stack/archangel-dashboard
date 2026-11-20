@@ -80,6 +80,15 @@ def start(app):
         id="daily_refresh",
         replace_existing=True,
     )
+    from engines import review_mailer
+    _scheduler.add_job(
+        func=lambda: review_mailer.send_reminders(app),
+        trigger="cron",
+        hour=16,  # ~8-9am Pacific on Railway's UTC clock
+        minute=0,
+        id="approval_reminders",
+        replace_existing=True,
+    )
     _scheduler.start()
     logger.info("Background scheduler started (daily refresh at 06:00)")
 

@@ -48,6 +48,7 @@ with app.app_context():
         for _col, _typedef in [
             ("review_token",       "VARCHAR(64)"),
             ("sent_for_review_at", "DATETIME"),
+            ("reminder_sent_at",   "DATETIME"),
             ("revision_of",        "INTEGER"),
         ]:
             if _col not in _existing_bd:
@@ -426,16 +427,10 @@ def _latest_reviews(draft_id):
 
 
 def _refresh_review_status(draft):
-    """Approved only when every owner's latest decision is approve; any 'changes' wins."""
+    """Victoria's latest decision sets the status; Chris's notes are advisory."""
     import roadmap_plan as plan
-    latest = _latest_reviews(draft.id)
-    decisions = [latest[r].decision for r in plan.REVIEWERS if r in latest]
-    if "changes_requested" in decisions:
-        draft.status = "changes_requested"
-    elif len(decisions) == len(plan.REVIEWERS):
-        draft.status = "approved"
-    else:
-        draft.status = "in_review"
+    approver = _latest_reviews(draft.id).get(plan.APPROVER)
+    draft.status = approver.decision if approver else "in_review"
     draft.updated_at = datetime.utcnow()
 
 
@@ -531,21 +526,58 @@ def generate_all_blog_drafts():
     return jsonify({"ok": True, "started": started})
 
 
+def _email_for_review(drafts):
+    """Give each draft a review link, email Victoria and Chris, and mark them sent only if the email went out."""
+    import secrets
+    from engines import review_mailer
+    for d in drafts:
+        d.review_token = d.review_token or secrets.token_urlsafe(24)
+    try:
+        review_mailer.send_request(drafts)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Email failed, nothing was sent: {e}"}), 502
+    for d in drafts:
+        d.sent_for_review_at = datetime.utcnow()
+        d.reminder_sent_at = None
+        d.status = "in_review"
+    db.session.commit()
+    return jsonify({"ok": True, "sent": [d.id for d in drafts]})
+
+
 @app.route("/api/roadmap/blog/<int:draft_id>/send", methods=["POST"])
 def send_blog_for_review(draft_id):
-    import secrets
-    import roadmap_plan as plan
     from models import BlogDraft
     draft = db.session.get(BlogDraft, draft_id) or abort(404)
     if draft.status not in ("draft", "in_review"):
         return jsonify({"error": f"draft is {draft.status}"}), 409
     if draft.error and not (request.get_json(silent=True) or {}).get("force"):
         return jsonify({"error": "Resolve the flagged figures first: " + draft.error}), 409
-    draft.review_token = draft.review_token or secrets.token_urlsafe(24)
-    draft.sent_for_review_at = draft.sent_for_review_at or datetime.utcnow()
-    draft.status = "in_review"
-    db.session.commit()
-    return jsonify({"ok": True, "review_url": f"{plan.DASHBOARD_URL}/review/{draft.review_token}"})
+    return _email_for_review([draft])
+
+
+@app.route("/api/roadmap/blog/send-all", methods=["POST"])
+def send_all_blogs_for_review():
+    """One email to Victoria and Chris with every unsent current draft."""
+    import roadmap_plan as plan
+    from models import BlogDraft
+    drafts, missing, flagged = [], [], []
+    for c in plan.CAMPAIGNS:
+        current = BlogDraft.query.filter(BlogDraft.campaign_key == c["key"], BlogDraft.status != "failed") \
+            .order_by(BlogDraft.created_at.desc()).first()
+        if not current or current.status == "generating":
+            missing.append(c["name"])
+        elif current.status == "draft":
+            drafts.append(current)
+            if current.error:
+                flagged.append(f"{c['name']}: {current.error}")
+    if missing:
+        return jsonify({"error": "These campaigns don't have a finished draft yet: " + ", ".join(missing)}), 409
+    if not drafts:
+        return jsonify({"error": "Every draft has already been sent."}), 409
+    if flagged and not (request.get_json(silent=True) or {}).get("force"):
+        return jsonify({"error": "Some drafts have flagged figures:\n" + "\n".join(flagged)}), 409
+    return _email_for_review(drafts)
 
 
 @app.route("/api/roadmap/blog/<int:draft_id>/revise", methods=["POST"])
@@ -601,11 +633,14 @@ def review_blog(token):
             if decision == "changes_requested" and not note:
                 flash("Please add a note describing the changes you'd like.", "danger")
             else:
-                db.session.add(BlogReview(draft_id=draft.id, reviewer=reviewer, decision=decision, note=note))
+                review = BlogReview(draft_id=draft.id, reviewer=reviewer, decision=decision, note=note)
+                db.session.add(review)
                 db.session.flush()
                 _refresh_review_status(draft)
                 db.session.commit()
                 thanks = reviewer
+                from engines import review_mailer
+                review_mailer.notify_decision(draft, review)
     return render_template("blog_review.html", draft=draft, campaign=campaign, plan=plan,
                            reviews=_latest_reviews(draft.id), thanks=thanks, newer=newer)
 

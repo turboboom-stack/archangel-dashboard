@@ -370,6 +370,7 @@ class BlogDraft(db.Model):
     error = db.Column(db.Text)
     review_token = db.Column(db.String(64))
     sent_for_review_at = db.Column(db.DateTime)
+    reminder_sent_at = db.Column(db.DateTime)
     revision_of = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)

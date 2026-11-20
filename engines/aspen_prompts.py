@@ -22,8 +22,8 @@ def _plain(html):
 def _master_block(master):
     if not master:
         return ("SOURCE OF TRUTH: not approved yet. Don't build this page until the blog below is approved by "
-                "Chris and Victoria; this prompt will be regenerated with the approved text.")
-    return (f"SOURCE OF TRUTH: the blog below was approved by Chris and Victoria. It is the master document. "
+                "the owners; this prompt will be regenerated with the approved text.")
+    return (f"SOURCE OF TRUTH: the blog below was approved by the owners. It is the master document. "
             f"Every figure, fee, timeline, legal step and consequence on this page must match it exactly. "
             f"If the page outline below conflicts with the approved blog, the blog wins. Don't add facts that "
             f"aren't in it.\n\n=== APPROVED BLOG: {master.title} ===\n{_plain(master.body_html)}\n=== END APPROVED BLOG ===")
@@ -82,7 +82,7 @@ When it's built, send me the preview link and a screenshot of the mobile view.""
 
 
 def publish_blog(c, draft):
-    return f"""Please publish this approved blog post on archangeltrust.com/blog. It was approved by Chris and Victoria, \
+    return f"""Please publish this approved blog post on archangeltrust.com/blog. It was approved by the owners, \
 so publish the text exactly as written (fix formatting only, no wording changes).
 
 - URL: /blog/{draft.slug}
