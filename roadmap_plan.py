@@ -12,6 +12,20 @@ landing pages or emails.
 """
 
 BOOKING_URL = "https://calendly.com/archangel-trust-cmartin/consultation"
+SITE = "https://www.archangeltrust.com"
+DASHBOARD_URL = "https://aa-dash.up.railway.app"
+FIRM_NAME = "ArchAngel Trust and Probate Services"
+REVIEWERS = ["Chris", "Victoria"]
+
+# Owner approval drives the whole timeline: nothing for a campaign (landing page, ads,
+# emails) is built until Chris and Victoria approve its blog, and the approved blog is
+# then the master document for every figure, process and consequence the campaign states.
+DRAFTS_SENT = "2026-11-23"
+REVIEW_NOTE = ("All four drafts go to Chris and Victoria on Mon Nov 23 (Thanksgiving week), so they can read "
+               "in one sitting or spread it out. Each approval date leaves 6-14 days of review time. After "
+               "approval: 2 days to bring the landing page, ads, guide and emails in line with the approved "
+               "blog, then 3 days for the Aspen agent to build. If an approval slips, that campaign's launch slips "
+               "by the same amount. The others keep going.")
 GEO = "Apple Valley, Victorville, Hesperia, Barstow (+15 mi) — SD paused"
 
 DATA_AS_OF = "2026-11-20"
@@ -21,8 +35,8 @@ FINDINGS = [
         "severity": "danger",
         "title": "GA4 stopped recording traffic on Oct 14",
         "detail": "GA4 sessions fell from ~40/day to ~3/day on Oct 14, but Search Console shows Google clicks "
-                  "steady at 40-55/week through November. Traffic didn't collapse; tracking did. Every "
-                  "dashboard number since Oct 14 is undercounted, and ads can't optimize without it.",
+                  "steady at 40-55/week through November. Traffic didn't collapse; tracking did. Likely the "
+                  "site move to the Aspen builder dropped or changed the GA4 tag.",
     },
     {
         "severity": "danger",
@@ -37,16 +51,16 @@ FINDINGS = [
                   "not the attorney consultation link (calendly.com/archangel-trust-cmartin/consultation). Confirm which is correct.",
     },
     {
-        "severity": "info",
-        "title": "Blog: Aspen publishes, the dashboard drafts",
-        "detail": "Aspen runs the live blog. Each campaign's Blog tab writes a draft built on that campaign's keywords "
-                  "and landing page; review it here and hand it to Aspen to publish.",
-    },
-    {
         "severity": "warning",
         "title": "6 near-duplicate probate posts cannibalize each other",
         "detail": "when-probate-is-required / -not-required / -needed / -not-needed / -necessary / is-not-required. "
                   "Consolidate into the winner (/blog/when-probate-is-not-required-california) with 301s.",
+    },
+    {
+        "severity": "info",
+        "title": "Owner approval sets the pace",
+        "detail": "Each campaign's blog goes to Chris and Victoria first. Once both approve, it becomes the master "
+                  "document: the landing page, ads, guide and emails are rewritten to match it, then built by the Aspen agent.",
     },
     {
         "severity": "info",
@@ -84,11 +98,12 @@ KEYWORD_CLUSTERS = [
 
 # CA Probate Code §10800/§10810 statutory fees on a $450K High Desert home:
 # 4% of first $100K + 3% of next $100K + 2% of next $250K = $12,000 attorney + $12,000 executor = $24,000.
-CAMPAIGNS = [
+_CAMPAIGNS = [
     {
         "key": "avoid-probate",
         "week": 1,
-        "dates": "Nov 23 - 29",
+        "dates": "Launch Dec 9",
+        "approval_due": "2026-12-02", "launch": "2026-12-09",
         "name": "Avoid Probate",
         "pain": "California probate takes 12-18 months, is public, and statutory fees on a $450K High Desert home add up to ~$24,000, paid out of what your family inherits.",
         "hook": "A living trust keeps your home out of probate court.",
@@ -132,7 +147,8 @@ CAMPAIGNS = [
     {
         "key": "living-trust",
         "week": 2,
-        "dates": "Nov 30 - Dec 6",
+        "dates": "Launch Dec 16",
+        "approval_due": "2026-12-04", "launch": "2026-12-16",
         "name": "Living Trust",
         "pain": "People searching \"living trust attorney\" are ready to buy, but we rank 11-32 for these terms. They don't know what a trust costs or whether they need one instead of a will.",
         "hook": "Know exactly what a living trust costs, what's in it, and whether you need one, before you call.",
@@ -172,8 +188,9 @@ CAMPAIGNS = [
     },
     {
         "key": "privacy",
-        "week": 3,
-        "dates": "Dec 7 - 13",
+        "week": 4,
+        "dates": "Launch Jan 6",
+        "approval_due": "2026-12-11", "launch": "2027-01-06",
         "name": "Keep It Private",
         "pain": "Probate files are public. Anyone can look up what you owned, what you owed, and who inherited. Scammers and \"we buy houses\" investors do.",
         "hook": "A trust keeps your family's business out of public court records.",
@@ -208,8 +225,9 @@ CAMPAIGNS = [
     },
     {
         "key": "new-year",
-        "week": 4,
-        "dates": "Dec 14 - 20",
+        "week": 3,
+        "dates": "Launch Dec 21",
+        "approval_due": "2026-12-09", "launch": "2026-12-21",
         "name": "Plan Before 2027",
         "pain": "\"When should I start estate planning?\" is a top question (800+ impressions). The holidays bring families together and these conversations come up. Most people put it off.",
         "hook": "Start 2027 with your estate plan done.",
@@ -245,39 +263,62 @@ CAMPAIGNS = [
     },
 ]
 
+CAMPAIGNS = sorted(_CAMPAIGNS, key=lambda c: c["week"])
+
+# Week 0 (Nov 23-27): site fixes happen in the Aspen builder, so each task carries a prompt
+# for the Aspen agent.
 WEEK0_TASKS = [
-    ("w0-ga4", "Verify gtag G-X5TNYWXNXM belongs to GA4 property 390363293; fix the tag in Webflow site settings and republish"),
-    ("w0-ads-tag", "Install the Google Ads conversion tag (or import GA4 key events form_submit + calendly_booked into Ads)"),
-    ("w0-calendly", "Confirm the correct booking link (site uses cameronwoodbury/archangel-financial-introduction-trust)"),
-    ("w0-scheduler", "Agree the blog hand-off with Aspen: the dashboard drafts one campaign post per week, Aspen publishes it"),
-    ("w0-dedupe", "301 the 5 duplicate 'when probate is required/needed' posts to /blog/when-probate-is-not-required-california"),
-    ("w0-clio", "Re-auth Clio (bookings last synced Sep 24) so campaign bookings show here"),
-    ("w0-webhook", "Point every landing-page form's Webflow webhook to /webhook/lead-magnet (sends lead + campaign to Aspen)"),
-    ("w0-aspen", "In Aspen: create one sequence per campaign, triggered by the contact property campaign=<key>"),
+    ("w0-send", "Send all 4 blog drafts to Chris & Victoria for approval (Blog tab → Send for approval)", None),
+    ("w0-ga4", "Restore GA4 tracking on every page", """Please check the Google Analytics 4 tag on archangeltrust.com. GA4 sessions dropped from ~40/day to ~3/day starting Oct 14, 2026, while Google Search Console still shows normal traffic, so the tag is missing or wrong on most pages.
+
+1. Tell me which GA4 measurement ID(s) are installed today and on which pages. Right now I can see gtag.js with G-X5TNYWXNXM on the home page, /contact, /request-a-consultation and /blog posts.
+2. Make sure the GA4 tag for our property (ID 390363293) loads once, site-wide, on every page including blog posts and landing pages, in the <head>.
+3. Keep the existing custom events firing: form_start, form_submit, phone_click, calendly_booked.
+4. Confirm by telling me the measurement ID now on the site and that it shows in GA4 Realtime."""),
+    ("w0-ads-tag", "Install the Google Ads conversion tag", """Please add Google Ads conversion tracking to archangeltrust.com. There is currently no Google Ads (AW-) tag on the site.
+
+1. Add the Google Ads global site tag (AW-<our Google Ads ID>; I'll paste it here) site-wide, alongside the GA4 tag.
+2. Fire a conversion event when: (a) any consultation/lead form is submitted successfully, and (b) a Calendly booking completes (calendly.event_scheduled message).
+3. Pass the gclid through: store the gclid URL parameter in a first-party cookie for 90 days, and add it to Calendly links as utm_content and to forms as a hidden 'gclid' field.
+4. Tell me the conversion labels you set up so I can match them in Google Ads."""),
+    ("w0-calendly", "Confirm and fix the booking link", """Every "Schedule a Consultation" button on archangeltrust.com currently links to calendly.com/cameronwoodbury/archangel-financial-introduction-trust. Please replace it site-wide with our attorney consultation link: https://calendly.com/archangel-trust-cmartin/consultation
+
+Keep any UTM parameters on the link, and pass through utm_source / utm_medium / utm_campaign from the page URL so bookings can be attributed to campaigns. List every page you changed."""),
+    ("w0-dedupe", "Consolidate the duplicate probate posts", """Please consolidate these overlapping blog posts on archangeltrust.com into one. Keep /blog/when-probate-is-not-required-california and set up permanent 301 redirects to it from:
+- /blog/when-probate-is-not-needed
+- /blog/when-probate-is-needed-california
+- /blog/when-probate-is-necessary-california
+- /blog/when-probate-is-required-california
+
+Before redirecting, move any unique, useful sections from those posts into the kept post (no duplicate paragraphs). Update internal links that point at the old URLs. Tell me when the redirects are live."""),
+    ("w0-clio", "Re-auth Clio (bookings last synced Sep 24) so campaign bookings show here", None),
+    ("w0-aspen", "Agree with the Aspen agent: one email sequence per campaign, triggered by contact property campaign=<key>", None),
 ]
 
 CAMPAIGN_TASK_TEMPLATE = [
-    ("blog", "Generate the blog draft (Blog tab), review it, send it to Aspen to publish, and add a guide CTA to the source blogs"),
-    ("magnet", "Design the lead-magnet PDF and upload it to Webflow assets"),
-    ("lp", "Build the landing page in Webflow (copy above), noindex until launch"),
-    ("form", "Add the guide form (name, email, phone); hidden field campaign=<key>; webhook to /webhook/lead-magnet"),
-    ("aspen", "Build the Aspen email sequence and test with a seed email"),
-    ("ads", "Create the Google Ads ad group: keywords, negatives, RSA, sitelinks to LP + blog"),
-    ("utm", "Final URL utm_source=google&utm_medium=cpc&utm_campaign=<key>; Calendly link carries utm_campaign"),
-    ("qa", "QA: submit a test lead and confirm it shows in Aspen + here, and that conversions fire"),
-    ("launch", "Launch the ad group and publish the landing page"),
-    ("review", "Day-7 review: search terms, negatives, CTR, landing page conversion rate; log metrics below"),
+    # (id, text, unlocked only after both owners approve the blog)
+    ("send", "Send the blog draft to Chris & Victoria (Blog tab)", False),
+    ("approved", "Chris & Victoria approved the blog (updates automatically)", False),
+    ("reconcile", "Bring the landing page, ad copy, guide and emails in line with the approved blog (figures, process, consequences)", True),
+    ("blog-live", "Aspen agent: publish the approved blog (copy the prompt)", True),
+    ("magnet", "Make the guide PDF from the approved blog", True),
+    ("lp", "Aspen agent: build the landing page (copy the prompt)", True),
+    ("aspen", "Aspen: build the email sequence from the approved blog, then test with a seed email", True),
+    ("ads", "Google Ads: create the ad group (keywords, negatives, RSA, sitelinks to landing page + blog)", True),
+    ("qa", "QA: submit a test lead and confirm it shows in Aspen + here, and that conversions fire", True),
+    ("launch", "Launch the ad group, take the landing page off noindex", True),
+    ("review", "Day-7 review: search terms, negatives, CTR, landing page conversion rate; log metrics", True),
 ]
 
 
 def campaign_tasks(key):
-    return [(f"{key}-{tid}", text.replace("<key>", key)) for tid, text in CAMPAIGN_TASK_TEMPLATE]
+    return [(f"{key}-{tid}", text.replace("<key>", key), gated) for tid, text, gated in CAMPAIGN_TASK_TEMPLATE]
 
 
 def all_task_keys():
-    keys = [k for k, _ in WEEK0_TASKS]
+    keys = [k for k, _, _ in WEEK0_TASKS]
     for c in CAMPAIGNS:
-        keys += [k for k, _ in campaign_tasks(c["key"])]
+        keys += [k for k, _, _ in campaign_tasks(c["key"])]
     return keys
 
 

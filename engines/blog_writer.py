@@ -12,7 +12,7 @@ from datetime import datetime
 
 import roadmap_plan as plan
 from engines import claude_client
-from models import db, BlogDraft, WebflowPost
+from models import db, BlogDraft, BlogReview, WebflowPost
 
 log = logging.getLogger(__name__)
 
@@ -136,7 +136,15 @@ def _write(app, draft_id):
         c = next(x for x in plan.CAMPAIGNS if x["key"] == draft.campaign_key)
         try:
             slugs = [p.slug for p in WebflowPost.query.filter_by(is_draft=False).all() if p.slug]
-            text = claude_client.call(SYSTEM_PROMPT.replace("{fee_table}", FEE_TABLE), _user_prompt(c, slugs), max_tokens=8000)
+            prompt = _user_prompt(c, slugs)
+            prev = db.session.get(BlogDraft, draft.revision_of) if draft.revision_of else None
+            if prev:
+                notes = BlogReview.query.filter_by(draft_id=prev.id, decision="changes_requested").all()
+                feedback = "\n".join(f"- {r.reviewer}: {r.note}" for r in notes) or "- (no notes)"
+                prompt += (f"\n\nREVISION: the owners reviewed the previous draft and asked for changes. Apply every "
+                           f"note below, keep everything they didn't ask to change, and keep the same slug.\n"
+                           f"Owner feedback:\n{feedback}\n\nPrevious draft (TITLE: {prev.title}):\n{prev.body_html}")
+            text = claude_client.call(SYSTEM_PROMPT.replace("{fee_table}", FEE_TABLE), prompt, max_tokens=8000)
             title, slug, meta, body = _parse(text)
             if re.search(r"free consult", body, re.I):
                 raise ValueError('draft used "free consultation" language — regenerate')
@@ -144,7 +152,7 @@ def _write(app, draft_id):
             draft.word_count = len(re.sub(r"<[^>]+>", " ", body).split())
             draft.status = "draft"
             odd = unverified_amounts(body)
-            draft.error = ("Check these figures before sending to Aspen: " + ", ".join(f"${a:,}" for a in odd)) if odd else None
+            draft.error = ("Check these figures before sending for approval: " + ", ".join(f"${a:,}" for a in odd)) if odd else None
         except Exception as e:
             log.exception("blog draft %s failed", draft_id)
             draft.status, draft.error = "failed", str(e)[:500]
@@ -152,11 +160,13 @@ def _write(app, draft_id):
         db.session.commit()
 
 
-def start(app, campaign_key):
-    """Queue a new draft for the campaign and write it in the background. Returns the draft."""
+def start(app, campaign_key, revise_from=None):
+    """Queue a new draft (or a revision of `revise_from` using the owners' notes) and write it
+    in the background. Returns the draft."""
     c = next(x for x in plan.CAMPAIGNS if x["key"] == campaign_key)
     draft = BlogDraft(campaign_key=campaign_key, target_kw=c["new_blog"]["target_kw"],
-                      title=c["new_blog"]["title"], status="generating")
+                      title=(revise_from.title if revise_from else c["new_blog"]["title"]), status="generating",
+                      revision_of=revise_from.id if revise_from else None)
     db.session.add(draft)
     db.session.commit()
     threading.Thread(target=_write, args=(app, draft.id), daemon=True).start()

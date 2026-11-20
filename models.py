@@ -366,7 +366,21 @@ class BlogDraft(db.Model):
     meta_description = db.Column(db.Text)
     body_html = db.Column(db.Text)
     word_count = db.Column(db.Integer)
-    status = db.Column(db.String(20), default="generating")  # generating / draft / approved / sent_to_aspen / failed
+    status = db.Column(db.String(20), default="generating")  # generating / draft / in_review / approved / changes_requested / published / failed
     error = db.Column(db.Text)
+    review_token = db.Column(db.String(64))
+    sent_for_review_at = db.Column(db.DateTime)
+    revision_of = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class BlogReview(db.Model):
+    """One owner's decision on a blog draft (Chris or Victoria), made from the review link."""
+    __tablename__ = "blog_reviews"
+    id = db.Column(db.Integer, primary_key=True)
+    draft_id = db.Column(db.Integer, nullable=False)
+    reviewer = db.Column(db.String(32), nullable=False)
+    decision = db.Column(db.String(20), nullable=False)  # approved / changes_requested
+    note = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

@@ -43,6 +43,15 @@ with app.app_context():
         ]:
             if _col not in _existing_cp:
                 _conn.execute(text(f"ALTER TABLE campaign_packages ADD COLUMN {_col} {_typedef}"))
+
+        _existing_bd = {row[1] for row in _conn.execute(text("PRAGMA table_info(blog_drafts)"))}
+        for _col, _typedef in [
+            ("review_token",       "VARCHAR(64)"),
+            ("sent_for_review_at", "DATETIME"),
+            ("revision_of",        "INTEGER"),
+        ]:
+            if _col not in _existing_bd:
+                _conn.execute(text(f"ALTER TABLE blog_drafts ADD COLUMN {_col} {_typedef}"))
         _conn.commit()
 
 # Start background scheduler and immediately kick off a full data refresh
@@ -408,20 +417,51 @@ def ad_strategy():
     return redirect(url_for("performance"))
 
 
+def _latest_reviews(draft_id):
+    from models import BlogReview
+    latest = {}
+    for r in BlogReview.query.filter_by(draft_id=draft_id).order_by(BlogReview.created_at).all():
+        latest[r.reviewer] = r
+    return latest
+
+
+def _refresh_review_status(draft):
+    """Approved only when every owner's latest decision is approve; any 'changes' wins."""
+    import roadmap_plan as plan
+    latest = _latest_reviews(draft.id)
+    decisions = [latest[r].decision for r in plan.REVIEWERS if r in latest]
+    if "changes_requested" in decisions:
+        draft.status = "changes_requested"
+    elif len(decisions) == len(plan.REVIEWERS):
+        draft.status = "approved"
+    else:
+        draft.status = "in_review"
+    draft.updated_at = datetime.utcnow()
+
+
 @app.route("/roadmap")
 def roadmap():
     import roadmap_plan as plan
     from models import RoadmapTask, RoadmapMetric, LeadMagnetSignup, BlogDraft
+    from engines import aspen_prompts
 
-    done ={t.task_key for t in RoadmapTask.query.filter_by(done=True).all()}
+    done = {t.task_key for t in RoadmapTask.query.filter_by(done=True).all()}
     signups = dict(db.session.query(LeadMagnetSignup.campaign_key, db.func.count())
                    .group_by(LeadMagnetSignup.campaign_key).all())
     bookings = dict(db.session.query(ClioBooking.campaign, db.func.count())
                     .filter(ClioBooking.campaign.in_(list(plan.CAMPAIGN_KEYS)))
                     .group_by(ClioBooking.campaign).all())
+    today = date.today()
 
     campaigns = []
     for c in plan.CAMPAIGNS:
+        drafts = BlogDraft.query.filter_by(campaign_key=c["key"]).order_by(BlogDraft.created_at.desc()).all()
+        current = next((d for d in drafts if d.status != "failed"), None)
+        master = next((d for d in drafts if d.status in ("approved", "published")), None)
+        if master:
+            done.add(f"{c['key']}-approved")
+        if current and current.sent_for_review_at:
+            done.add(f"{c['key']}-send")
         tasks = plan.campaign_tasks(c["key"])
         metrics = RoadmapMetric.query.filter_by(campaign_key=c["key"]).order_by(RoadmapMetric.week_start).all()
         tot = {"impressions": sum(m.impressions or 0 for m in metrics), "clicks": sum(m.clicks or 0 for m in metrics),
@@ -431,22 +471,31 @@ def roadmap():
         tot["ctr"] = tot["clicks"] / tot["impressions"] if tot["impressions"] else None
         tot["lp_cvr"] = tot["leads"] / tot["lp_visits"] if tot["lp_visits"] else None
         tot["cpl"] = tot["cost"] / tot["leads"] if tot["leads"] else None
-        drafts = BlogDraft.query.filter_by(campaign_key=c["key"]).order_by(BlogDraft.created_at.desc()).all()
-        campaigns.append({**c, "tasks": tasks, "done_count": sum(k in done for k, _ in tasks),
-                          "metrics": metrics, "totals": tot, "drafts": drafts})
+        due = date.fromisoformat(c["approval_due"])
+        campaigns.append({
+            **c, "tasks": tasks, "done_count": sum(k in done for k, _, _ in tasks),
+            "metrics": metrics, "totals": tot, "drafts": drafts, "current": current, "master": master,
+            "reviews": _latest_reviews(current.id) if current else {},
+            "overdue": not master and today > due, "days_to_due": (due - today).days,
+            "prompts": {
+                "lp": aspen_prompts.landing_page(c, master),
+                "email": aspen_prompts.email_sequence(c, master),
+                "publish": aspen_prompts.publish_blog(c, master) if master else None,
+            },
+        })
 
-    week0_done = sum(k in done for k, _ in plan.WEEK0_TASKS)
+    week0_done = sum(k in done for k, _, _ in plan.WEEK0_TASKS)
     total_tasks = len(plan.all_task_keys())
     return render_template("roadmap.html", plan=plan, campaigns=campaigns, done=done,
                            week0_done=week0_done, total_done=len(done & set(plan.all_task_keys())),
-                           total_tasks=total_tasks)
+                           total_tasks=total_tasks, today=today)
 
 
 @app.route("/api/roadmap/task/<task_key>", methods=["POST"])
 def toggle_roadmap_task(task_key):
     import roadmap_plan as plan
     from models import RoadmapTask
-    if task_key not in plan.all_task_keys():
+    if task_key not in plan.all_task_keys() or task_key.endswith(("-approved", "-send")):
         return jsonify({"error": "unknown task"}), 404
     task = RoadmapTask.query.filter_by(task_key=task_key).first() or RoadmapTask(task_key=task_key)
     task.done = bool((request.get_json(silent=True) or {}).get("done"))
@@ -469,14 +518,54 @@ def generate_blog_draft(campaign_key):
     return jsonify({"ok": True, "id": draft.id})
 
 
+@app.route("/api/roadmap/blog/generate-all", methods=["POST"])
+def generate_all_blog_drafts():
+    """Write a draft for every campaign that doesn't have a usable one yet."""
+    import roadmap_plan as plan
+    from models import BlogDraft
+    from engines import blog_writer
+    started = []
+    for c in plan.CAMPAIGNS:
+        if not BlogDraft.query.filter(BlogDraft.campaign_key == c["key"], BlogDraft.status != "failed").first():
+            started.append(blog_writer.start(app, c["key"]).id)
+    return jsonify({"ok": True, "started": started})
+
+
+@app.route("/api/roadmap/blog/<int:draft_id>/send", methods=["POST"])
+def send_blog_for_review(draft_id):
+    import secrets
+    import roadmap_plan as plan
+    from models import BlogDraft
+    draft = db.session.get(BlogDraft, draft_id) or abort(404)
+    if draft.status not in ("draft", "in_review"):
+        return jsonify({"error": f"draft is {draft.status}"}), 409
+    if draft.error and not (request.get_json(silent=True) or {}).get("force"):
+        return jsonify({"error": "Resolve the flagged figures first: " + draft.error}), 409
+    draft.review_token = draft.review_token or secrets.token_urlsafe(24)
+    draft.sent_for_review_at = draft.sent_for_review_at or datetime.utcnow()
+    draft.status = "in_review"
+    db.session.commit()
+    return jsonify({"ok": True, "review_url": f"{plan.DASHBOARD_URL}/review/{draft.review_token}"})
+
+
+@app.route("/api/roadmap/blog/<int:draft_id>/revise", methods=["POST"])
+def revise_blog_draft(draft_id):
+    from models import BlogDraft
+    from engines import blog_writer
+    draft = db.session.get(BlogDraft, draft_id) or abort(404)
+    if BlogDraft.query.filter_by(campaign_key=draft.campaign_key, status="generating").first():
+        return jsonify({"error": "a draft is already being written"}), 409
+    new = blog_writer.start(app, draft.campaign_key, revise_from=draft)
+    return jsonify({"ok": True, "id": new.id})
+
+
 @app.route("/api/roadmap/blog/<int:draft_id>/status", methods=["POST"])
 def set_blog_draft_status(draft_id):
     from models import BlogDraft
-    status = (request.get_json(silent=True) or {}).get("status")
-    if status not in ("draft", "approved", "sent_to_aspen"):
-        return jsonify({"error": "bad status"}), 400
     draft = db.session.get(BlogDraft, draft_id) or abort(404)
-    draft.status = status
+    if (request.get_json(silent=True) or {}).get("status") != "published" or draft.status != "approved":
+        return jsonify({"error": "only an approved draft can be marked published"}), 400
+    draft.status = "published"
     draft.updated_at = datetime.utcnow()
     db.session.commit()
     return jsonify({"ok": True})
@@ -486,9 +575,39 @@ def set_blog_draft_status(draft_id):
 def view_blog_draft(draft_id):
     import roadmap_plan as plan
     from models import BlogDraft
+    from engines import aspen_prompts
     draft = db.session.get(BlogDraft, draft_id) or abort(404)
     campaign = next((c for c in plan.CAMPAIGNS if c["key"] == draft.campaign_key), None)
-    return render_template("blog_draft.html", draft=draft, campaign=campaign)
+    review_url = f"{plan.DASHBOARD_URL}/review/{draft.review_token}" if draft.review_token else None
+    publish_prompt = aspen_prompts.publish_blog(campaign, draft) if draft.status in ("approved", "published") else None
+    return render_template("blog_draft.html", draft=draft, campaign=campaign, plan=plan,
+                           reviews=_latest_reviews(draft.id), review_url=review_url, publish_prompt=publish_prompt)
+
+
+@app.route("/review/<token>", methods=["GET", "POST"])
+def review_blog(token):
+    """Owner-facing review page: Chris and Victoria read the draft and approve or request changes."""
+    import roadmap_plan as plan
+    from models import BlogDraft, BlogReview
+    draft = BlogDraft.query.filter_by(review_token=token).first() or abort(404)
+    campaign = next((c for c in plan.CAMPAIGNS if c["key"] == draft.campaign_key), None)
+    newer = BlogDraft.query.filter(BlogDraft.revision_of == draft.id, BlogDraft.review_token.isnot(None)).first()
+    thanks = None
+    if request.method == "POST" and draft.status in ("in_review", "changes_requested", "approved"):
+        reviewer = request.form.get("reviewer")
+        decision = request.form.get("decision")
+        note = (request.form.get("note") or "").strip()
+        if reviewer in plan.REVIEWERS and decision in ("approved", "changes_requested"):
+            if decision == "changes_requested" and not note:
+                flash("Please add a note describing the changes you'd like.", "danger")
+            else:
+                db.session.add(BlogReview(draft_id=draft.id, reviewer=reviewer, decision=decision, note=note))
+                db.session.flush()
+                _refresh_review_status(draft)
+                db.session.commit()
+                thanks = reviewer
+    return render_template("blog_review.html", draft=draft, campaign=campaign, plan=plan,
+                           reviews=_latest_reviews(draft.id), thanks=thanks, newer=newer)
 
 
 @app.route("/api/roadmap/metric", methods=["POST"])

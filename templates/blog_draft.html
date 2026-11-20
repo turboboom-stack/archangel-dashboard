@@ -6,31 +6,69 @@
   .bd-body { max-width: 760px; font-size: 1rem; line-height: 1.7; }
   .bd-body h2 { font-family: var(--arc-font-display); font-size: 1.4rem; margin-top: 1.8rem; }
   .bd-body h3 { font-size: 1.1rem; margin-top: 1.3rem; }
+  .bd-prompt { white-space: pre-wrap; font-size: .78rem; max-height: 320px; overflow: auto; background: var(--arc-surface-2); border: 1px solid var(--arc-border); border-radius: 8px; padding: .75rem; }
 </style>
 
 <a href="/roadmap#c-{{ draft.campaign_key }}" class="small text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Back to {{ campaign.name if campaign else 'roadmap' }}</a>
 
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 my-3">
   <div>
-    <small class="text-muted">Campaign blog draft · {{ campaign.name if campaign }} · {{ draft.word_count }} words</small>
+    <small class="text-muted">Campaign blog · {{ campaign.name if campaign }} · {{ draft.word_count }} words{% if draft.revision_of %} · revision of #{{ draft.revision_of }}{% endif %}</small>
     <h3 class="mb-1" style="font-family: var(--arc-font-display);">{{ draft.title }}</h3>
-    <div class="small text-muted">/blog/{{ draft.slug }} · target "{{ draft.target_kw }}"</div>
+    <div class="small text-muted">/blog/{{ draft.slug }} · target "{{ draft.target_kw }}"{% if campaign %} · approval due {{ campaign.approval_due }}{% endif %}</div>
   </div>
   <div class="d-flex flex-wrap gap-2">
+    {% if draft.status == 'draft' %}
+      <button class="btn btn-sm btn-warning" id="bd-send"><i class="bi bi-send me-1"></i>Send for approval</button>
+    {% elif draft.status == 'changes_requested' %}
+      <button class="btn btn-sm btn-warning" id="bd-revise"><i class="bi bi-arrow-repeat me-1"></i>Revise with owners' notes</button>
+    {% elif draft.status == 'approved' %}
+      <button class="btn btn-sm btn-outline-warning" id="bd-published"><i class="bi bi-check2-circle me-1"></i>Mark published by Aspen</button>
+    {% endif %}
     <button class="btn btn-sm btn-outline-warning" data-copy="bd-html"><i class="bi bi-code-slash me-1"></i>Copy HTML</button>
-    <button class="btn btn-sm btn-outline-warning" data-copy="bd-meta"><i class="bi bi-clipboard me-1"></i>Copy meta</button>
-    <button class="btn btn-sm {% if draft.status == 'approved' %}btn-warning{% else %}btn-outline-warning{% endif %}" data-status="approved">Approve</button>
-    <button class="btn btn-sm {% if draft.status == 'sent_to_aspen' %}btn-success{% else %}btn-outline-warning{% endif %}" data-status="sent_to_aspen">Mark sent to Aspen</button>
   </div>
 </div>
 
 {% if draft.error %}
 <div class="alert alert-danger small"><i class="bi bi-exclamation-triangle me-1"></i>{{ draft.error }}</div>
 {% endif %}
-<div class="alert alert-secondary small mb-3"><i class="bi bi-shield-check me-1"></i>Attorney review required before publishing: confirm every legal figure and Probate Code citation.</div>
 
 <div class="card bg-black border-secondary mb-3"><div class="card-body small">
-  <strong>Meta description:</strong> <span id="bd-meta">{{ draft.meta_description }}</span>
+  <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+    <strong>Owner approval</strong>
+    <span>{% if draft.status == 'approved' %}<span class="badge bg-success">Approved: master document</span>
+      {% elif draft.status == 'published' %}<span class="badge bg-success">Published</span>
+      {% elif draft.status == 'in_review' %}<span class="badge bg-warning">With Chris &amp; Victoria</span>
+      {% elif draft.status == 'changes_requested' %}<span class="badge bg-danger">Changes requested</span>
+      {% else %}<span class="badge bg-secondary">Not sent yet</span>{% endif %}</span>
+  </div>
+  {% if review_url %}
+  <div class="input-group input-group-sm mb-2">
+    <span class="input-group-text">Review link for owners</span>
+    <input class="form-control" id="bd-link" value="{{ review_url }}" readonly>
+    <button class="btn btn-outline-warning" data-copy="bd-link">Copy</button>
+  </div>
+  {% endif %}
+  {% for r in plan.REVIEWERS %}{% set rv = reviews.get(r) %}
+  <div class="py-1 border-top border-secondary">
+    <strong>{{ r }}:</strong>
+    {% if rv %}{{ 'Approved' if rv.decision == 'approved' else 'Changes requested' }} <span class="text-muted">· {{ rv.created_at.strftime('%b %-d, %-I:%M %p') }}</span>
+      {% if rv.note %}<div class="text-muted">"{{ rv.note }}"</div>{% endif %}
+    {% else %}<span class="text-muted">waiting</span>{% endif %}
+  </div>
+  {% endfor %}
+</div></div>
+
+{% if publish_prompt %}
+<div class="card bg-black border-success mb-3"><div class="card-body small">
+  <div class="d-flex justify-content-between align-items-center mb-2"><strong><i class="bi bi-robot me-1"></i>Aspen agent prompt: publish this post</strong>
+    <button class="btn btn-sm btn-outline-warning" data-copy="bd-publish">Copy prompt</button></div>
+  <div class="bd-prompt" id="bd-publish">{{ publish_prompt }}</div>
+</div></div>
+{% endif %}
+
+<div class="card bg-black border-secondary mb-3"><div class="card-body small">
+  <strong>Meta description:</strong> {{ draft.meta_description }}
 </div></div>
 
 <div class="card bg-black border-secondary"><div class="card-body bd-body">
@@ -40,19 +78,32 @@
 <textarea id="bd-html" class="d-none">{{ draft.body_html }}</textarea>
 
 <script>
-document.querySelectorAll('[data-copy]').forEach(function (b) {
-  b.addEventListener('click', function () {
-    var el = document.getElementById(b.dataset.copy);
-    navigator.clipboard.writeText(el.value !== undefined ? el.value : el.textContent).then(function () {
-      b.innerHTML = '<i class="bi bi-check2 me-1"></i>Copied';
-    });
-  });
+function copyFrom(id, btn) {
+  var el = document.getElementById(id);
+  var text = (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') ? el.value : el.textContent;
+  navigator.clipboard.writeText(text).then(function () { var o = btn.innerHTML; btn.innerHTML = 'Copied'; setTimeout(function () { btn.innerHTML = o; }, 1500); });
+}
+document.querySelectorAll('[data-copy]').forEach(function (b) { b.addEventListener('click', function () { copyFrom(b.dataset.copy, b); }); });
+function post(url, body) {
+  return fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})})
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'failed'); return j; }); });
+}
+var send = document.getElementById('bd-send');
+if (send) send.addEventListener('click', function () {
+  post('/api/roadmap/blog/{{ draft.id }}/send').catch(function (e) {
+    if (confirm(e.message + '\n\nSend anyway?')) return post('/api/roadmap/blog/{{ draft.id }}/send', {force: true});
+    throw e;
+  }).then(function () { location.reload(); }).catch(function () {});
 });
-document.querySelectorAll('[data-status]').forEach(function (b) {
-  b.addEventListener('click', function () {
-    fetch('/api/roadmap/blog/{{ draft.id }}/status', {method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({status: b.dataset.status})}).then(function (r) { if (r.ok) location.reload(); });
-  });
+var rev = document.getElementById('bd-revise');
+if (rev) rev.addEventListener('click', function () {
+  rev.disabled = true;
+  post('/api/roadmap/blog/{{ draft.id }}/revise').then(function () { location.href = '/roadmap#c-{{ draft.campaign_key }}'; })
+    .catch(function (e) { rev.disabled = false; alert(e.message); });
+});
+var pub = document.getElementById('bd-published');
+if (pub) pub.addEventListener('click', function () {
+  post('/api/roadmap/blog/{{ draft.id }}/status', {status: 'published'}).then(function () { location.reload(); }).catch(function (e) { alert(e.message); });
 });
 </script>
 {% endblock %}

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Review: {{ draft.title }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root { --ink: #1F2937; --muted: #6B7280; --line: #E5E7EB; --accent: #3B6E5C; --danger: #B54B3A; --paper: #FFFFFF; --bg: #FAFAF8; }
+    body { background: var(--bg); color: var(--ink); font-family: 'Inter', sans-serif; }
+    .doc { max-width: 760px; margin: 0 auto; padding: 32px 16px 80px; }
+    .doc h1 { font-family: 'Fraunces', Georgia, serif; font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.2; }
+    .post { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: clamp(20px, 5vw, 40px); font-size: 1.05rem; line-height: 1.75; }
+    .post h2 { font-family: 'Fraunces', Georgia, serif; font-size: 1.45rem; margin-top: 2rem; }
+    .post h3 { font-size: 1.1rem; margin-top: 1.4rem; }
+    .post a { color: var(--accent); }
+    .meta { color: var(--muted); font-size: .9rem; }
+    .panel { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+    .btn-approve { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-approve:hover { background: #2F5A4B; color: #fff; }
+    .btn-changes { border-color: var(--danger); color: var(--danger); }
+    .btn-changes:hover { background: var(--danger); color: #fff; }
+    .status-ok { color: var(--accent); font-weight: 600; }
+    .status-no { color: var(--danger); font-weight: 600; }
+  </style>
+</head>
+<body>
+<div class="doc">
+  <div class="meta mb-2">{{ plan.FIRM_NAME }} · Blog for approval · {{ campaign.name if campaign }} campaign</div>
+  <h1 class="mb-2">{{ draft.title }}</h1>
+  <div class="meta mb-4">{{ draft.word_count }} words · about {{ ((draft.word_count or 0) / 238)|round|int }} min read{% if campaign %} · approval requested by {{ campaign.approval_due }}{% endif %}</div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for cat, msg in messages %}<div class="alert alert-{{ cat }}">{{ msg }}</div>{% endfor %}{% endwith %}
+
+  {% if newer %}
+  <div class="alert alert-warning">A revised version of this post has been sent. Please review the new link instead.</div>
+  {% endif %}
+
+  {% if thanks %}
+  <div class="alert alert-success">Thank you, {{ thanks }}. Your decision has been recorded.</div>
+  {% endif %}
+
+  <div class="panel mb-4">
+    <div class="fw-semibold mb-2">Why this post matters</div>
+    <p class="mb-2">Once approved, this post becomes the reference for the campaign: the landing page, ads, guide and follow-up emails all take their figures, steps and wording from it. Please check the legal figures and Probate Code references especially carefully.</p>
+    <div class="d-flex flex-wrap gap-4 small">
+      {% for r in plan.REVIEWERS %}
+        {% set rv = reviews.get(r) %}
+        <div>{{ r }}:
+          {% if rv and rv.decision == 'approved' %}<span class="status-ok">Approved</span>
+          {% elif rv %}<span class="status-no">Changes requested</span>
+          {% else %}<span class="meta">Waiting</span>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mb-3 meta"><strong>Search description:</strong> {{ draft.meta_description }}</div>
+  <article class="post mb-4">{{ draft.body_html|safe }}</article>
+
+  {% if not newer and draft.status in ('in_review', 'changes_requested', 'approved') %}
+  <form method="post" class="panel">
+    <div class="fw-semibold mb-3">Your decision</div>
+    <div class="mb-3">
+      <div class="small meta mb-1">I am</div>
+      {% for r in plan.REVIEWERS %}
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="reviewer" id="rv-{{ r }}" value="{{ r }}" required>
+        <label class="form-check-label" for="rv-{{ r }}">{{ r }}</label>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="mb-3">
+      <label for="note" class="small meta mb-1">Notes (required if you're asking for changes: be as specific as you like, e.g. "change the fee example in section 3")</label>
+      <textarea class="form-control" id="note" name="note" rows="5"></textarea>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-approve px-4" name="decision" value="approved">Approve as written</button>
+      <button class="btn btn-changes px-4" name="decision" value="changes_requested">Request changes</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+</body>
+</html>
