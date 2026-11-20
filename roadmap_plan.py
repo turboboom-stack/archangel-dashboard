@@ -107,9 +107,9 @@ KEYWORD_CLUSTERS = [
 _CAMPAIGNS = [
     {
         "key": "avoid-probate",
-        "week": 1,
-        "dates": "Launch Dec 9",
-        "approval_due": "2026-12-02", "launch": "2026-12-09",
+        "week": 2,
+        "dates": "Launch Dec 16",
+        "approval_due": "2026-12-04", "launch": "2026-12-16",
         "name": "Avoid Probate",
         "pain": "California probate takes 12-18 months, is public, and statutory fees on a $450K High Desert home add up to ~$24,000, paid out of what your family inherits.",
         "hook": "A living trust keeps your home out of probate court.",
@@ -152,9 +152,9 @@ _CAMPAIGNS = [
     },
     {
         "key": "living-trust",
-        "week": 2,
-        "dates": "Launch Dec 16",
-        "approval_due": "2026-12-04", "launch": "2026-12-16",
+        "week": 3,
+        "dates": "Launch Dec 21",
+        "approval_due": "2026-12-09", "launch": "2026-12-21",
         "name": "Living Trust",
         "pain": "People searching \"living trust attorney\" are ready to buy, but we rank 11-32 for these terms. They don't know what a trust costs or whether they need one instead of a will.",
         "hook": "Know exactly what a living trust costs, what's in it, and whether you need one, before you call.",
@@ -231,9 +231,9 @@ _CAMPAIGNS = [
     },
     {
         "key": "new-year",
-        "week": 3,
-        "dates": "Launch Dec 21",
-        "approval_due": "2026-12-09", "launch": "2026-12-21",
+        "week": 1,  # moved up at Chris's suggestion: year-end timing matters most for this one
+        "dates": "Launch Dec 9",
+        "approval_due": "2026-12-02", "launch": "2026-12-09",
         "name": "Plan Before 2027",
         "pain": "\"When should I start estate planning?\" is a top question (800+ impressions). The holidays bring families together and these conversations come up. Most people put it off.",
         "hook": "Start 2027 with your estate plan done.",
@@ -307,7 +307,7 @@ CAMPAIGN_TASK_TEMPLATE = [
     ("approved", "Victoria approved the blog (updates automatically)", False),
     ("reconcile", "Bring the landing page, ad copy, guide and emails in line with the approved blog (figures, process, consequences)", True),
     ("blog-live", "Aspen agent: publish the approved blog (copy the prompt)", True),
-    ("magnet", "Make the guide PDF from the approved blog", True),
+    ("magnet", "Aspen agent: create the guide PDF from the approved blog (Guide & materials tab)", True),
     ("lp", "Aspen agent: build the landing page (copy the prompt)", True),
     ("aspen", "Aspen: build the email sequence from the approved blog, then test with a seed email", True),
     ("ads", "Google Ads: create the ad group (keywords, negatives, RSA, sitelinks to landing page + blog)", True),

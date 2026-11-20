@@ -475,6 +475,8 @@ def roadmap():
             "prompts": {
                 "lp": aspen_prompts.landing_page(c, master),
                 "email": aspen_prompts.email_sequence(c, master),
+                "pdf": aspen_prompts.lead_magnet_pdf(c, master),
+                "materials": aspen_prompts.supporting_materials(c, master),
                 "publish": aspen_prompts.publish_blog(c, master) if master else None,
             },
         })

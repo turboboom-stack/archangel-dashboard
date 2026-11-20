@@ -182,7 +182,7 @@
         {% elif c.overdue %}<span class="badge bg-danger rm-pill align-middle">Approval overdue</span>
         {% else %}<span class="badge bg-secondary rm-pill align-middle"><i class="bi bi-lock me-1"></i>Waiting on blog approval</span>{% endif %}</h5></div>
     <ul class="nav nav-pills small" role="tablist">
-      {% for tab, label in [('strategy','Strategy'),('blog','Blog'),('ads','Ad'),('lp','Landing page'),('email','Aspen sequence'),('tasks','Checklist'),('report','Report')] %}
+      {% for tab, label in [('strategy','Strategy'),('blog','Blog'),('ads','Ad'),('lp','Landing page'),('guide','Guide & materials'),('email','Aspen sequence'),('tasks','Checklist'),('report','Report')] %}
       <li class="nav-item"><button class="nav-link py-1 px-2 {% if loop.first %}active{% endif %}" data-bs-toggle="pill" data-bs-target="#{{ c.key }}-{{ tab }}" type="button">{{ label }}{% if tab == 'tasks' %} <span class="badge bg-secondary">{{ c.done_count }}/{{ c.tasks|length }}</span>{% endif %}</button></li>
       {% endfor %}
     </ul>
@@ -310,6 +310,27 @@
       </div>
       <div class="rm-prompt" id="pub-{{ c.key }}">{{ c.prompts.publish }}</div>
       {% endif %}
+    </div>
+
+    <div class="tab-pane fade" id="{{ c.key }}-guide">
+      {% if c.master %}
+      <div class="alert alert-success py-2 small mb-3"><i class="bi bi-check-circle me-1"></i>Blog approved. Both prompts include the approved post, so the guide and materials use its figures.</div>
+      {% else %}
+      <div class="alert alert-secondary py-2 small mb-3"><i class="bi bi-lock me-1"></i>Create these after the blog is approved; the prompts update themselves with the approved text.</div>
+      {% endif %}
+      <div class="fw-bold">{{ c.lead_magnet.title }} <span class="text-muted fw-normal">({{ c.lead_magnet.format }})</span></div>
+      <div class="mb-1">{{ c.lead_magnet.contents }}</div>
+      <div class="text-muted mb-3">Hosted at archangeltrust.com/guides/{{ c.key }}.pdf, delivered by the landing page thank-you message and the Day 0 email.</div>
+      <div class="d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-robot me-1"></i>Aspen agent prompt: create the guide PDF</strong>
+        <button class="btn btn-sm {% if c.master %}btn-warning{% else %}btn-outline-warning{% endif %}" data-copy="pdf-{{ c.key }}">Copy prompt</button>
+      </div>
+      <div class="rm-prompt" id="pdf-{{ c.key }}">{{ c.prompts.pdf }}</div>
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <strong><i class="bi bi-robot me-1"></i>Aspen agent prompt: email header, Google Business post, social post, office flyer</strong>
+        <button class="btn btn-sm {% if c.master %}btn-warning{% else %}btn-outline-warning{% endif %}" data-copy="mat-{{ c.key }}">Copy prompt</button>
+      </div>
+      <div class="rm-prompt" id="mat-{{ c.key }}">{{ c.prompts.materials }}</div>
     </div>
 
     <div class="tab-pane fade" id="{{ c.key }}-email">

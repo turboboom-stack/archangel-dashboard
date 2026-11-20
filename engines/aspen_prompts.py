@@ -99,6 +99,59 @@ so publish the text exactly as written (fix formatting only, no wording changes)
 === END ==="""
 
 
+def lead_magnet_pdf(c, master=None):
+    lm = c["lead_magnet"]
+    utm = f"utm_source=guide&utm_medium=pdf&utm_campaign={c['key']}"
+    return f"""Please create a downloadable PDF for our "{c['name']}" campaign: {lm['title']}.
+
+FORMAT: {lm['format']}, US Letter, designed to read well on a phone screen and to print cleanly in black and white.
+CONTENTS: {lm['contents']}
+
+STRUCTURE
+- Cover (for a guide of 1-2 pages, a title band at the top of page 1 instead): the title, a one-line promise ("{c['hook']}"), our logo, and "Prepared by {plan.FIRM_NAME}".
+- Body: the contents above, as scannable sections with headings, short paragraphs, tables and checkboxes where they fit.
+- Last page: "Ready to put this in place?" with a short paragraph, a "Schedule a Consultation" button linking to \
+{plan.BOOKING_URL}?{utm}, our phone number, the Apple Valley office address and archangeltrust.com.
+- Footer on every page: {plan.FIRM_NAME} · archangeltrust.com · page number.
+- Small print at the end: "This guide is general information about California law, not legal advice for your situation."
+
+DESIGN: Match archangeltrust.com (same logo, Manrope font, colors and button style as /services/living-trusts). Clean, \
+plenty of white space, no stock photos of gavels or courtrooms.
+
+RULES
+- Every figure, fee, deadline and legal step must come from the approved blog below. Don't add facts that aren't in it.
+- Any family example is a clearly labeled hypothetical ("Example: a couple with a $450,000 home..."), never presented \
+as a real client.
+- Never say "free consultation". Don't quote what we charge.
+
+DELIVERY: Host the PDF on the site at {plan.SITE}/guides/{c['key']}.pdf (not linked from the main navigation). That \
+link is used on the {c['landing_page']['slug']} thank-you message and in the Day 0 email of the "{c['name']}" sequence. \
+Send me the PDF to review before anything links to it.
+
+{_master_block(master).replace('this page', 'this guide').replace("build this page", "create this guide")}"""
+
+
+def supporting_materials(c, master=None):
+    lm = c["lead_magnet"]
+    blog_slug = master.slug if master else c["new_blog"]["slug"]
+    return f"""Please create the supporting materials for our "{c['name']}" campaign. Use the same look as \
+{lm['title']} (the campaign's guide PDF) and archangeltrust.com, so everything reads as one campaign.
+
+1. EMAIL HEADER: a 600x200 banner for the top of every email in the "{c['name']}" sequence, with the guide title \
+and our logo. Light enough to read in dark-mode inboxes.
+2. GOOGLE BUSINESS PROFILE POST (Apple Valley profile): a 1200x900 image plus 80-120 words of post copy based on \
+the blog's main point, with a "Learn more" button linking to {plan.SITE}/blog/{blog_slug}.
+3. SOCIAL POST: a 1080x1080 image and a short caption (under 60 words) for Facebook/Instagram sharing the blog \
+link {plan.SITE}/blog/{blog_slug}. Headline idea: "{c['hook']}"
+4. OFFICE HANDOUT: a one-page printable flyer for the front desk with the guide's top 3 takeaways and a QR code \
+to {plan.SITE}{c['landing_page']['slug']}?utm_source=print&utm_medium=flyer&utm_campaign={c['key']}.
+
+Rules: figures and claims come only from the approved blog below. Never say "free consultation" (the guide itself \
+is free; you can say that). Don't quote what we charge. Send me everything to review before it's posted or printed.
+
+{_master_block(master).replace('this page', 'these materials').replace("build this page", "create these materials")}"""
+
+
 def email_sequence(c, master=None):
     rows = "\n".join(f"- Day {e['day']}: subject \"{e['subject']}\": {e['goal']}" for e in c["sequence"])
     return f"""Please build an automated email sequence for the "{c['name']}" campaign.
@@ -110,6 +163,9 @@ From: Victoria P. Martin, {plan.FIRM_NAME}. Every email ends with a "Schedule a 
 
 Emails:
 {rows}
+
+The Day 0 email delivers the guide as a link to {plan.SITE}/guides/{c['key']}.pdf (the PDF is created separately; \
+check that link works before turning the sequence on). Use the campaign's email header banner at the top of each email.
 
 Rules: short (120-200 words), personal, one call to action each. Never say "free consultation". Don't quote what we charge.
 
