@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% block title %}30-Day Roadmap — Archangel Command Center{% endblock %}
+
+{% block content %}
+<style>
+  .rm-week { border-left: 3px solid var(--arc-accent); }
+  .rm-num { font-family: var(--arc-font-display); font-size: 1.6rem; line-height: 1; }
+  .rm-funnel { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+  .rm-funnel .step { background: var(--arc-surface-2); border: 1px solid var(--arc-border); border-radius: 8px; padding: .5rem .75rem; font-weight: 600; font-size: .82rem; }
+  .rm-funnel .arrow { color: var(--arc-muted); }
+  .rm-task { cursor: pointer; }
+  .rm-task.done .txt { text-decoration: line-through; color: var(--arc-muted); }
+  .rm-ad { border: 1px solid var(--arc-border); border-radius: 8px; padding: .75rem 1rem; background: var(--arc-surface); max-width: 620px; }
+  .rm-ad .h { color: #1a0dab; font-size: 1.05rem; }
+  .rm-ad .u { color: #006621; font-size: .8rem; }
+  .rm-kw code { color: var(--arc-text); background: var(--arc-surface-2); padding: 1px 6px; border-radius: 4px; margin: 0 4px 4px 0; display: inline-block; }
+  .rm-pill { font-size: .72rem; }
+  @media (max-width: 576px) { .rm-num { font-size: 1.3rem; } }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <h4 class="mb-0 text-warning fw-bold"><i class="bi bi-signpost-split me-2"></i>30-Day Micro-Campaign Roadmap</h4>
+    <small class="text-muted">Nov 23 – Dec 20, 2026 · one blog, landing page, ad group and Aspen sequence per week · data as of {{ plan.DATA_AS_OF }}</small>
+  </div>
+  <div class="text-end">
+    <div class="rm-num text-warning">{{ total_done }}/{{ total_tasks }}</div>
+    <small class="text-muted">tasks complete</small>
+    <div class="progress mt-1" style="height:6px; width:180px;">
+      <div class="progress-bar bg-success" style="width: {{ (100 * total_done / total_tasks)|round }}%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- The system -->
+<div class="card bg-black border-secondary mb-4">
+  <div class="card-body">
+    <h6 class="text-warning mb-3">How every micro-campaign works</h6>
+    <div class="rm-funnel mb-3">
+      <span class="step"><i class="bi bi-journal-text me-1"></i>Blog harvest</span><span class="arrow">→</span>
+      <span class="step"><i class="bi bi-search me-1"></i>Keyword cluster</span><span class="arrow">→</span>
+      <span class="step"><i class="bi bi-badge-ad me-1"></i>Google Ads ad group</span><span class="arrow">→</span>
+      <span class="step"><i class="bi bi-window me-1"></i>Matching landing page</span><span class="arrow">→</span>
+      <span class="step"><i class="bi bi-file-earmark-arrow-down me-1"></i>Guide download</span><span class="arrow">→</span>
+      <span class="step"><i class="bi bi-envelope-paper me-1"></i>Aspen sequence</span><span class="arrow">→</span>
+      <span class="step text-success"><i class="bi bi-calendar-check me-1"></i>Consultation booked</span>
+    </div>
+    <div class="row g-3 small">
+      <div class="col-md-4"><strong>Same creative end to end.</strong> The ad headline, the landing page headline, the guide title and the first email all repeat the same pain point and promise.</div>
+      <div class="col-md-4"><strong>Tracked per campaign.</strong> The guide form sends <code>campaign=&lt;key&gt;</code> to <code>/webhook/lead-magnet</code> → Aspen. Calendly bookings carry <code>utm_campaign</code> and show up in the report automatically.</div>
+      <div class="col-md-4"><strong>Guardrails.</strong> Spend in {{ plan.GEO }}. 90/10 estate planning: probate searches are the hook, living trusts are the offer. No "free consultation" in landing pages or emails.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Week 0 -->
+<div class="card bg-black border-danger mb-4">
+  <div class="card-header border-danger d-flex justify-content-between align-items-center">
+    <h5 class="mb-0 text-danger"><i class="bi bi-exclamation-octagon me-2"></i>Week 0: fix the foundation first (this week)</h5>
+    <span class="badge bg-danger">{{ week0_done }}/{{ plan.WEEK0_TASKS|length }}</span>
+  </div>
+  <div class="card-body">
+    <div class="row g-3 mb-3">
+      {% for f in plan.FINDINGS %}
+      <div class="col-md-6 col-xl-4">
+        <div class="h-100 p-3 rounded border {% if f.severity == 'danger' %}border-danger{% else %}border-secondary{% endif %}">
+          <div class="fw-bold small mb-1">
+            {% if f.severity == 'danger' %}<i class="bi bi-x-octagon text-danger me-1"></i>{% elif f.severity == 'warning' %}<i class="bi bi-exclamation-triangle me-1"></i>{% else %}<i class="bi bi-lightbulb me-1 text-success"></i>{% endif %}
+            {{ f.title }}
+          </div>
+          <div class="small text-muted">{{ f.detail }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <ul class="list-unstyled mb-0">
+      {% for key, text in plan.WEEK0_TASKS %}
+      <li class="rm-task py-1 {% if key in done %}done{% endif %}" data-key="{{ key }}">
+        <input type="checkbox" class="form-check-input me-2" {% if key in done %}checked{% endif %}><span class="txt small">{{ text }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<!-- Research -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-header border-secondary"><h6 class="mb-0">Blog harvest: top posts (12 months)</h6>
+        <small class="text-muted">GA4 pageviews · Search Console clicks / impressions / avg. position (16 mo)</small></div>
+      <div class="table-responsive">
+        <table class="table table-dark table-sm mb-0 small align-middle">
+          <thead><tr><th>Post</th><th class="text-end">Views</th><th class="text-end">Clicks</th><th class="text-end">Impr.</th><th class="text-end">Pos.</th><th>Feeds</th></tr></thead>
+          <tbody>
+          {% for b in plan.TOP_BLOGS %}
+            <tr><td><a href="https://www.archangeltrust.com/blog/{{ b.slug }}" target="_blank" class="text-decoration-none">{{ b.slug|replace('-', ' ')|truncate(48) }}</a></td>
+              <td class="text-end">{{ b.views }}</td><td class="text-end">{{ b.clicks }}</td><td class="text-end">{{ "{:,}".format(b.impr) }}</td><td class="text-end">{{ b.pos }}</td>
+              <td>{% if b.campaign %}<span class="badge bg-info rm-pill">{{ b.campaign }}</span>{% endif %}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card bg-black border-secondary h-100">
+      <div class="card-header border-secondary"><h6 class="mb-0">Keyword harvest: what people search to find us</h6>
+        <small class="text-muted">500 Search Console queries grouped by topic</small></div>
+      <div class="card-body small">
+        {% for k in plan.KEYWORD_CLUSTERS %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between"><strong>{{ k.topic }}</strong><span class="text-muted">{{ "{:,}".format(k.impr) }} impr · {{ k.clicks }} clicks</span></div>
+          <div class="text-muted mb-1">{{ k.note }}</div>
+          <div class="rm-kw">{% for q in k.top %}<code>{{ q }}</code>{% endfor %}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Calendar -->
+<div class="row g-3 mb-4">
+  {% for c in campaigns %}
+  <div class="col-md-6 col-xl-3">
+    <a href="#c-{{ c.key }}" class="text-decoration-none text-reset">
+      <div class="card bg-black border-secondary h-100 rm-week">
+        <div class="card-body">
+          <div class="d-flex justify-content-between"><small class="text-muted">Week {{ c.week }} · {{ c.dates }}</small><small class="text-muted">{{ c.done_count }}/{{ c.tasks|length }}</small></div>
+          <h5 class="mt-1 mb-1">{{ c.name }}</h5>
+          <div class="small text-muted mb-2">{{ c.hook }}</div>
+          <div class="progress" style="height:4px;"><div class="progress-bar bg-success" style="width: {{ (100 * c.done_count / c.tasks|length)|round }}%"></div></div>
+          <div class="small mt-2"><i class="bi bi-cash-stack me-1"></i>${{ c.ads.budget_day }}/day · {{ c.landing_page.slug }}</div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+<div class="small text-muted mb-4"><i class="bi bi-info-circle me-1"></i>Ad groups stack: by Week 4, spend is ${{ campaigns|sum(attribute='ads.budget_day') }}/day (~${{ (campaigns|sum(attribute='ads.budget_day')) * 30 }}/mo), inside the $500–1,000 budget. Shift money toward whichever ad group has the lowest cost per lead after its Day-7 review.</div>
+
+<!-- Campaign detail -->
+{% for c in campaigns %}
+<div class="card bg-black border-secondary mb-4" id="c-{{ c.key }}">
+  <div class="card-header border-secondary d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div><small class="text-muted">Week {{ c.week }} · {{ c.dates }}</small>
+      <h5 class="mb-0">{{ c.name }}</h5></div>
+    <ul class="nav nav-pills small" role="tablist">
+      {% for tab, label in [('strategy','Strategy'),('ads','Ad'),('lp','Landing page'),('email','Aspen sequence'),('tasks','Checklist'),('report','Report')] %}
+      <li class="nav-item"><button class="nav-link py-1 px-2 {% if loop.first %}active{% endif %}" data-bs-toggle="pill" data-bs-target="#{{ c.key }}-{{ tab }}" type="button">{{ label }}{% if tab == 'tasks' %} <span class="badge bg-secondary">{{ c.done_count }}/{{ c.tasks|length }}</span>{% endif %}</button></li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="card-body tab-content small">
+
+    <div class="tab-pane fade show active" id="{{ c.key }}-strategy">
+      <div class="row g-4">
+        <div class="col-lg-6">
+          <div class="text-muted text-uppercase small fw-bold mb-1">Pain point</div>
+          <p>{{ c.pain }}</p>
+          <div class="text-muted text-uppercase small fw-bold mb-1">Promise</div>
+          <p class="fw-bold">{{ c.hook }}</p>
+          <div class="text-muted text-uppercase small fw-bold mb-1">Harvested from</div>
+          <ul class="mb-0">{% for s in c.source_blogs %}<li><a href="https://www.archangeltrust.com/blog/{{ s }}" target="_blank">/blog/{{ s }}</a></li>{% endfor %}</ul>
+        </div>
+        <div class="col-lg-6">
+          <div class="p-3 rounded border border-secondary mb-3">
+            <div class="text-muted text-uppercase small fw-bold mb-1"><i class="bi bi-journal-plus me-1"></i>This week's new blog</div>
+            <div class="fw-bold">{{ c.new_blog.title }}</div>
+            <div class="text-muted">/blog/{{ c.new_blog.slug }} · target: "{{ c.new_blog.target_kw }}"</div>
+            <div class="mt-1">{{ c.new_blog.angle }}</div>
+          </div>
+          <div class="p-3 rounded border border-secondary">
+            <div class="text-muted text-uppercase small fw-bold mb-1"><i class="bi bi-file-earmark-pdf me-1"></i>Lead magnet</div>
+            <div class="fw-bold">{{ c.lead_magnet.title }} <span class="text-muted fw-normal">({{ c.lead_magnet.format }})</span></div>
+            <div>{{ c.lead_magnet.contents }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="{{ c.key }}-ads">
+      <div class="row g-4">
+        <div class="col-lg-7">
+          <div class="text-muted text-uppercase small fw-bold mb-2">Preview</div>
+          <div class="rm-ad mb-3">
+            <div class="u">Sponsored · archangeltrust.com{{ c.landing_page.slug }}</div>
+            <div class="h">{{ c.ads.headlines[0] }} | {{ c.ads.headlines[1] }} | {{ c.ads.headlines[2] }}</div>
+            <div class="text-muted">{{ c.ads.descriptions[0] }}</div>
+          </div>
+          <div class="text-muted text-uppercase small fw-bold mb-1">Headlines (≤30 chars)</div>
+          <ol class="mb-3">{% for h in c.ads.headlines %}<li>{{ h }} <span class="text-muted">({{ h|length }})</span></li>{% endfor %}</ol>
+          <div class="text-muted text-uppercase small fw-bold mb-1">Descriptions (≤90 chars)</div>
+          <ol class="mb-0">{% for d in c.ads.descriptions %}<li>{{ d }} <span class="text-muted">({{ d|length }})</span></li>{% endfor %}</ol>
+        </div>
+        <div class="col-lg-5">
+          <div class="mb-2"><strong>Ad group:</strong> {{ c.ads.ad_group }}</div>
+          <div class="mb-2"><strong>Budget:</strong> ${{ c.ads.budget_day }}/day · Max conversions once tracking is fixed (manual CPC until then)</div>
+          <div class="mb-2"><strong>Geo:</strong> {{ plan.GEO }}</div>
+          <div class="mb-2"><strong>Final URL:</strong> <code>https://www.archangeltrust.com{{ c.landing_page.slug }}?utm_source=google&amp;utm_medium=cpc&amp;utm_campaign={{ c.key }}</code></div>
+          <div class="text-muted text-uppercase small fw-bold mt-3 mb-1">Keywords</div>
+          <div class="rm-kw">{% for k in c.ads.keywords %}<code>{{ k }}</code>{% endfor %}</div>
+          <div class="text-muted text-uppercase small fw-bold mt-2 mb-1">Negatives</div>
+          <div class="rm-kw">{% for k in c.ads.negatives %}<code>{{ k }}</code>{% endfor %}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="{{ c.key }}-lp">
+      <div class="text-muted">archangeltrust.com{{ c.landing_page.slug }}</div>
+      <h4 class="mt-1" style="font-family: var(--arc-font-display);">{{ c.landing_page.headline }}</h4>
+      <p class="lead fs-6">{{ c.landing_page.sub }}</p>
+      <div class="text-muted text-uppercase small fw-bold mb-1">Page sections (top to bottom)</div>
+      <ol>{% for s in c.landing_page.sections %}<li>{{ s }}</li>{% endfor %}</ol>
+      <div class="p-3 rounded border border-secondary">
+        <strong>Two calls to action on every screen:</strong> "Get {{ c.lead_magnet.title }}" (form: name, email, phone, hidden <code>campaign={{ c.key }}</code>) and
+        "Book Your Consultation" → Calendly with <code>utm_campaign={{ c.key }}</code>.
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="{{ c.key }}-email">
+      <div class="mb-2 text-muted">Aspen trigger: contact created with <code>properties.campaign = "{{ c.key }}"</code>. Exit the sequence when a consultation is booked.</div>
+      <div class="table-responsive">
+        <table class="table table-dark table-sm small mb-0">
+          <thead><tr><th>Day</th><th>Subject</th><th>Job of this email</th></tr></thead>
+          <tbody>{% for e in c.sequence %}<tr><td>{{ e.day }}</td><td class="fw-bold">{{ e.subject }}</td><td>{{ e.goal }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="{{ c.key }}-tasks">
+      <ul class="list-unstyled mb-0">
+        {% for key, text in c.tasks %}
+        <li class="rm-task py-1 {% if key in done %}done{% endif %}" data-key="{{ key }}">
+          <input type="checkbox" class="form-check-input me-2" {% if key in done %}checked{% endif %}><span class="txt">{{ text }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="tab-pane fade" id="{{ c.key }}-report">
+      {% set t = c.totals %}
+      <div class="row g-3 mb-3 text-center">
+        {% for label, val in [('Impressions', "{:,}".format(t.impressions)), ('Clicks', t.clicks), ('CTR', ('%.1f%%' % (100*t.ctr)) if t.ctr is not none else '—'), ('Spend', '$%.0f' % t.cost), ('Guide leads', t.leads), ('LP conv. rate', ('%.1f%%' % (100*t.lp_cvr)) if t.lp_cvr is not none else '—'), ('Cost / lead', ('$%.0f' % t.cpl) if t.cpl is not none else '—'), ('Bookings', t.bookings)] %}
+        <div class="col-6 col-md-3 col-xl"><div class="p-2 rounded border border-secondary"><div class="rm-num">{{ val }}</div><small class="text-muted">{{ label }}</small></div></div>
+        {% endfor %}
+      </div>
+      <div class="text-muted mb-2">Targets: landing page conversion ≥ {{ (100*plan.TARGETS.lp_cvr)|int }}%, lead → booking ≥ {{ (100*plan.TARGETS.lead_to_booking)|int }}%. Leads come from <code>/webhook/lead-magnet</code>; bookings from Calendly/Clio with <code>utm_campaign={{ c.key }}</code>.</div>
+      {% if c.metrics %}
+      <table class="table table-dark table-sm small"><thead><tr><th>Week of</th><th>Impr.</th><th>Clicks</th><th>Spend</th><th>LP visits</th></tr></thead>
+        <tbody>{% for m in c.metrics %}<tr><td>{{ m.week_start }}</td><td>{{ m.impressions }}</td><td>{{ m.clicks }}</td><td>${{ '%.2f' % m.cost }}</td><td>{{ m.lp_visits }}</td></tr>{% endfor %}</tbody></table>
+      {% endif %}
+      <form method="post" action="/api/roadmap/metric" class="row g-2 align-items-end">
+        <input type="hidden" name="campaign_key" value="{{ c.key }}">
+        <div class="col-6 col-md-2"><label class="form-label small mb-0">Week of</label><input type="date" name="week_start" class="form-control form-control-sm" required></div>
+        <div class="col-6 col-md-2"><label class="form-label small mb-0">Impressions</label><input type="number" name="impressions" class="form-control form-control-sm" min="0"></div>
+        <div class="col-6 col-md-2"><label class="form-label small mb-0">Clicks</label><input type="number" name="clicks" class="form-control form-control-sm" min="0"></div>
+        <div class="col-6 col-md-2"><label class="form-label small mb-0">Spend ($)</label><input type="number" step="0.01" name="cost" class="form-control form-control-sm" min="0"></div>
+        <div class="col-6 col-md-2"><label class="form-label small mb-0">LP visits</label><input type="number" name="lp_visits" class="form-control form-control-sm" min="0"></div>
+        <div class="col-6 col-md-2"><button class="btn btn-sm btn-warning w-100">Log week</button></div>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endfor %}
+
+<script>
+document.querySelectorAll('.rm-task').forEach(function (li) {
+  var box = li.querySelector('input');
+  li.addEventListener('click', function (e) {
+    if (e.target !== box) box.checked = !box.checked;
+    li.classList.toggle('done', box.checked);
+    fetch('/api/roadmap/task/' + li.dataset.key, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({done: box.checked})
+    }).then(function (r) { if (!r.ok) throw new Error(); })
+      .catch(function () { box.checked = !box.checked; li.classList.toggle('done', box.checked); alert('Could not save — try again.'); });
+  });
+});
+</script>
+{% endblock %}

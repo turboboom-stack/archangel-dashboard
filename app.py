@@ -408,6 +408,108 @@ def ad_strategy():
     return redirect(url_for("performance"))
 
 
+@app.route("/roadmap")
+def roadmap():
+    import roadmap_plan as plan
+    from models import RoadmapTask, RoadmapMetric, LeadMagnetSignup
+
+    done = {t.task_key for t in RoadmapTask.query.filter_by(done=True).all()}
+    signups = dict(db.session.query(LeadMagnetSignup.campaign_key, db.func.count())
+                   .group_by(LeadMagnetSignup.campaign_key).all())
+    bookings = dict(db.session.query(ClioBooking.campaign, db.func.count())
+                    .filter(ClioBooking.campaign.in_(list(plan.CAMPAIGN_KEYS)))
+                    .group_by(ClioBooking.campaign).all())
+
+    campaigns = []
+    for c in plan.CAMPAIGNS:
+        tasks = plan.campaign_tasks(c["key"])
+        metrics = RoadmapMetric.query.filter_by(campaign_key=c["key"]).order_by(RoadmapMetric.week_start).all()
+        tot = {"impressions": sum(m.impressions or 0 for m in metrics), "clicks": sum(m.clicks or 0 for m in metrics),
+               "cost": sum(m.cost or 0 for m in metrics), "lp_visits": sum(m.lp_visits or 0 for m in metrics)}
+        tot["leads"] = signups.get(c["key"], 0)
+        tot["bookings"] = bookings.get(c["key"], 0)
+        tot["ctr"] = tot["clicks"] / tot["impressions"] if tot["impressions"] else None
+        tot["lp_cvr"] = tot["leads"] / tot["lp_visits"] if tot["lp_visits"] else None
+        tot["cpl"] = tot["cost"] / tot["leads"] if tot["leads"] else None
+        campaigns.append({**c, "tasks": tasks, "done_count": sum(k in done for k, _ in tasks),
+                          "metrics": metrics, "totals": tot})
+
+    week0_done = sum(k in done for k, _ in plan.WEEK0_TASKS)
+    total_tasks = len(plan.all_task_keys())
+    return render_template("roadmap.html", plan=plan, campaigns=campaigns, done=done,
+                           week0_done=week0_done, total_done=len(done & set(plan.all_task_keys())),
+                           total_tasks=total_tasks)
+
+
+@app.route("/api/roadmap/task/<task_key>", methods=["POST"])
+def toggle_roadmap_task(task_key):
+    import roadmap_plan as plan
+    from models import RoadmapTask
+    if task_key not in plan.all_task_keys():
+        return jsonify({"error": "unknown task"}), 404
+    task = RoadmapTask.query.filter_by(task_key=task_key).first() or RoadmapTask(task_key=task_key)
+    task.done = bool((request.get_json(silent=True) or {}).get("done"))
+    task.done_at = datetime.utcnow() if task.done else None
+    db.session.add(task)
+    db.session.commit()
+    return jsonify({"ok": True, "done": task.done})
+
+
+@app.route("/api/roadmap/metric", methods=["POST"])
+def save_roadmap_metric():
+    import roadmap_plan as plan
+    from models import RoadmapMetric
+    f = request.form
+    key = f.get("campaign_key")
+    if key not in plan.CAMPAIGN_KEYS:
+        flash("Unknown campaign.", "danger")
+        return redirect(url_for("roadmap"))
+    week = date.fromisoformat(f.get("week_start"))
+    m = RoadmapMetric.query.filter_by(campaign_key=key, week_start=week).first() or RoadmapMetric(campaign_key=key, week_start=week)
+    m.impressions = int(f.get("impressions") or 0)
+    m.clicks = int(f.get("clicks") or 0)
+    m.cost = float(f.get("cost") or 0)
+    m.lp_visits = int(f.get("lp_visits") or 0)
+    db.session.add(m)
+    db.session.commit()
+    flash("Weekly metrics saved.", "success")
+    return redirect(url_for("roadmap") + f"#c-{key}")
+
+
+@app.route("/webhook/lead-magnet", methods=["POST"])
+def lead_magnet_webhook():
+    """Webflow form submission (lead-magnet download) -> log it and forward to Aspen
+    with properties.campaign so Aspen starts that campaign's sequence. Webflow site
+    webhooks can't send custom headers, so the secret rides in ?key=."""
+    import roadmap_plan as plan
+    from models import LeadMagnetSignup
+    from connectors import aspen_connector
+
+    secret = os.environ.get("LEAD_WEBHOOK_SECRET") or config._env.get("LEAD_WEBHOOK_SECRET", "")
+    if secret and not hmac.compare_digest(request.args.get("key", ""), secret):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    body = request.get_json(silent=True) or request.form.to_dict()
+    data = (body.get("payload") or {}).get("data") or body.get("data") or body
+    fields = {k.lower().strip(): v for k, v in data.items() if isinstance(v, str)}
+    email = fields.get("email") or fields.get("email address") or ""
+    name = fields.get("name") or fields.get("full name") or ""
+    phone = fields.get("phone") or fields.get("phone number") or ""
+    campaign = (fields.get("campaign") or request.args.get("campaign") or "").strip()
+    if campaign not in plan.CAMPAIGN_KEYS:
+        campaign = "unknown"
+
+    first, _, last = name.partition(" ")
+    sent = aspen_connector.send_contact_created(
+        email, first_name=first, last_name=last,
+        properties={"campaign": campaign, "source": "lead_magnet", "phone": phone},
+    )
+    signup = LeadMagnetSignup(campaign_key=campaign, email=email, name=name, phone=phone, aspen_sent=bool(sent))
+    db.session.add(signup)
+    db.session.commit()
+    return jsonify({"received": True, "campaign": campaign, "aspen_sent": bool(sent)})
+
+
 # ── API endpoints ─────────────────────────────────────────────────────────────
 
 @app.route("/api/ads/upload", methods=["POST"])

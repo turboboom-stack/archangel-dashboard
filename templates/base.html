@@ -39,6 +39,11 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="nav-link {% if request.path == '/roadmap' %}active text-warning{% endif %}" href="/roadmap">
+            <i class="bi bi-signpost-split me-1"></i>Roadmap
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link {% if request.path == '/opportunities' %}active text-warning{% endif %}" href="/opportunities">
             <i class="bi bi-compass me-1"></i>Opportunities
           </a>

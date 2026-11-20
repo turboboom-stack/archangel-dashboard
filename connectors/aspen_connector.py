@@ -15,9 +15,9 @@ def send_contact_created(email, first_name="", last_name="", properties=None, oc
     never raises, so a down/misbehaving Aspen endpoint can't break the Clio sync."""
     if not email:
         log.warning("Aspen: skipping contact_created — no email")
-        return
+        return False
     if not config.ASPEN_INGEST_URL or not config.ASPEN_ADVISOR_ID:
-        return
+        return False
 
     payload = {"event_type": "contact_created", "email": email}
     if first_name:
@@ -39,8 +39,10 @@ def send_contact_created(email, first_name="", last_name="", properties=None, oc
         with urllib.request.urlopen(req, timeout=15) as resp:
             resp.read()
         log.info(f"Aspen: sent contact_created for {email}")
+        return True
     except urllib.error.HTTPError as e:
         body = e.read().decode(errors="replace")
         log.error(f"Aspen webhook failed ({e.code}): {body[:300]}")
     except Exception as e:
         log.error(f"Aspen webhook failed: {e}")
+    return False

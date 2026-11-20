@@ -320,3 +320,36 @@ class ActionItem(db.Model):
     cta_text = db.Column(db.String(128))
     cta_url = db.Column(db.String(512))
     is_dismissed = db.Column(db.Boolean, default=False)
+
+
+class RoadmapTask(db.Model):
+    __tablename__ = "roadmap_tasks"
+    id = db.Column(db.Integer, primary_key=True)
+    task_key = db.Column(db.String(64), unique=True, nullable=False)
+    done = db.Column(db.Boolean, default=False)
+    done_at = db.Column(db.DateTime)
+
+
+class RoadmapMetric(db.Model):
+    """Weekly numbers per micro-campaign, entered by hand from Google Ads."""
+    __tablename__ = "roadmap_metrics"
+    id = db.Column(db.Integer, primary_key=True)
+    campaign_key = db.Column(db.String(32), nullable=False)
+    week_start = db.Column(db.Date, nullable=False)
+    impressions = db.Column(db.Integer, default=0)
+    clicks = db.Column(db.Integer, default=0)
+    cost = db.Column(db.Float, default=0.0)
+    lp_visits = db.Column(db.Integer, default=0)
+    entered_at = db.Column(db.DateTime, default=datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint("campaign_key", "week_start", name="uq_roadmap_metric"),)
+
+
+class LeadMagnetSignup(db.Model):
+    __tablename__ = "lead_magnet_signups"
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    campaign_key = db.Column(db.String(32))
+    email = db.Column(db.String(256))
+    name = db.Column(db.String(256))
+    phone = db.Column(db.String(64))
+    aspen_sent = db.Column(db.Boolean, default=False)
