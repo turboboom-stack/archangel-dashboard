@@ -44,7 +44,7 @@ WEBFLOW_SITE_ID = "63ac55346093abd87bb7c94b"
 WEBFLOW_COLLECTION_ID = "698a3ae9e9fbd2025949aff5"
 
 # ── GMB ───────────────────────────────────────────────────────────────────────
-GMB_ACCOUNT_ID = "15426524260327885681"
+GMB_ACCOUNT_ID = "111976301686477021796"  # account that manages both locations (Business Profile account list)
 GMB_LOCATION_SD = "11305825743805504309"
 GMB_LOCATION_AV = "13038354335424408062"
 

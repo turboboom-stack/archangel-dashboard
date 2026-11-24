@@ -647,6 +647,70 @@ def review_blog(token):
                            reviews=_latest_reviews(draft.id), thanks=thanks, newer=newer)
 
 
+@app.route("/reviews")
+def reviews():
+    from models import GmbReview
+    from connectors import gmb_reviews
+    rows = GmbReview.query.order_by(GmbReview.review_time.desc()).all()
+    pending = [r for r in rows if r.status == "needs_reply"]
+    pending.sort(key=lambda r: (r.stars or 5, -(r.review_time.timestamp() if r.review_time else 0)))
+    return render_template("reviews.html", pending=pending,
+                           done=[r for r in rows if r.status != "needs_reply"],
+                           locations=gmb_reviews.LOCATION_NAMES, meta=CacheMetadata.get("gmb_reviews"))
+
+
+@app.route("/api/reviews/sync", methods=["POST"])
+def sync_reviews():
+    import threading
+    from connectors import gmb_reviews
+
+    threading.Thread(target=gmb_reviews.sync, args=(app,), daemon=True).start()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/reviews/<int:review_id>/post", methods=["POST"])
+def post_review_reply(review_id):
+    from models import GmbReview
+    from connectors import gmb_reviews
+    row = db.session.get(GmbReview, review_id) or abort(404)
+    text_ = ((request.get_json(silent=True) or {}).get("reply") or "").strip()
+    if not text_:
+        return jsonify({"error": "Reply is empty"}), 400
+    if re.search(r"free consult", text_, re.I):
+        return jsonify({"error": 'Remove "free consultation" before posting'}), 400
+    try:
+        gmb_reviews.post_reply(row, text_)
+    except Exception as e:
+        row.error = str(e)
+        db.session.commit()
+        return jsonify({"error": str(e)}), 502
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/reviews/<int:review_id>/redraft", methods=["POST"])
+def redraft_review_reply(review_id):
+    from models import GmbReview
+    from connectors import gmb_reviews
+    row = db.session.get(GmbReview, review_id) or abort(404)
+    try:
+        row.reply_draft = gmb_reviews.draft_reply(row, (request.get_json(silent=True) or {}).get("guidance"))
+        row.error = gmb_reviews.check(row.reply_draft)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+    db.session.commit()
+    return jsonify({"ok": True, "reply": row.reply_draft, "warning": row.error})
+
+
+@app.route("/api/reviews/<int:review_id>/skip", methods=["POST"])
+def skip_review(review_id):
+    from models import GmbReview
+    row = db.session.get(GmbReview, review_id) or abort(404)
+    row.status = "needs_reply" if row.status == "skipped" else "skipped"
+    db.session.commit()
+    return jsonify({"ok": True, "status": row.status})
+
+
 @app.route("/api/roadmap/metric", methods=["POST"])
 def save_roadmap_metric():
     import roadmap_plan as plan

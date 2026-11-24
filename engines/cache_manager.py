@@ -89,6 +89,16 @@ def start(app):
         id="approval_reminders",
         replace_existing=True,
     )
+    from connectors import gmb_reviews
+    _scheduler.add_job(
+        func=lambda: gmb_reviews.sync(app, notify=True),
+        trigger="cron",
+        day_of_week="mon",
+        hour=16,
+        minute=15,
+        id="weekly_reviews",
+        replace_existing=True,
+    )
     _scheduler.start()
     logger.info("Background scheduler started (daily refresh at 06:00)")
 

@@ -385,3 +385,21 @@ class BlogReview(db.Model):
     decision = db.Column(db.String(20), nullable=False)  # approved / changes_requested
     note = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class GmbReview(db.Model):
+    """A Google Business Profile review, with a drafted reply waiting for Jordan's OK before it posts."""
+    __tablename__ = "gmb_reviews"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(256), unique=True, nullable=False)  # accounts/../locations/../reviews/..
+    location = db.Column(db.String(8))  # 'SD' or 'AV'
+    reviewer = db.Column(db.String(256))
+    stars = db.Column(db.Integer)
+    comment = db.Column(db.Text)
+    review_time = db.Column(db.DateTime)
+    google_reply = db.Column(db.Text)  # the reply currently live on Google, if any
+    reply_draft = db.Column(db.Text)
+    status = db.Column(db.String(20), default="needs_reply")  # needs_reply / posted / replied / skipped
+    error = db.Column(db.Text)
+    posted_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

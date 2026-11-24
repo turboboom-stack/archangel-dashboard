@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Reviews — Archangel Command Center{% endblock %}
+
+{% block content %}
+<style>
+  .rv-stars { color: #f5c542; letter-spacing: 1px; }
+  .rv-stars .off { color: #555; }
+  .rv-reply { white-space: pre-wrap; }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h4 class="mb-0 text-warning fw-bold"><i class="bi bi-star-half me-2"></i>Google Reviews</h4>
+    <small class="text-muted">Checked every Monday morning; you get an email when new reviews come in. Edit a draft if needed, then post it straight to Google.
+      {% if meta.last_refreshed %}Last check {{ meta.last_refreshed.strftime('%b %-d, %-I:%M %p') }} UTC.{% endif %}</small>
+  </div>
+  <button class="btn btn-sm btn-warning" id="rv-sync"><i class="bi bi-arrow-clockwise me-1"></i>Check for new reviews</button>
+</div>
+
+{% if meta.status == 'error' %}
+<div class="alert alert-danger small"><i class="bi bi-exclamation-triangle me-1"></i>Last check failed: {{ meta.error_msg }}</div>
+{% endif %}
+
+{% macro stars(n) %}<span class="rv-stars">{% for i in range(5) %}<span class="{{ '' if i < (n or 0) else 'off' }}">★</span>{% endfor %}</span>{% endmacro %}
+
+<h6 class="text-uppercase text-muted small fw-bold mb-2">Needs a reply ({{ pending|length }})</h6>
+{% if not pending %}
+<div class="text-muted small mb-4">All caught up.{% if not done %} Click "Check for new reviews" to pull them in for the first time.{% endif %}</div>
+{% endif %}
+{% for r in pending %}
+<div class="card bg-black {{ 'border-danger' if (r.stars or 5) <= 3 else 'border-secondary' }} mb-3" id="rv-{{ r.id }}">
+  <div class="card-body small">
+    <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
+      <div>{{ stars(r.stars) }} <strong class="ms-1">{{ r.reviewer }}</strong>
+        <span class="text-muted">· {{ locations.get(r.location) }} · {{ r.review_time.strftime('%b %-d, %Y') if r.review_time }}</span></div>
+      {% if (r.stars or 5) <= 3 %}<span class="badge bg-danger">Handle with care</span>{% endif %}
+    </div>
+    <div class="mb-3">{{ r.comment or '(star rating only, no text)' }}</div>
+    <div class="alert alert-warning py-1 small {{ '' if r.error else 'd-none' }}" id="rv-warn-{{ r.id }}">{{ r.error or '' }}</div>
+    <label class="text-muted small mb-1">Reply (edit freely before posting)</label>
+    <textarea class="form-control form-control-sm bg-dark text-light border-secondary mb-2" rows="3" id="rv-text-{{ r.id }}">{{ r.reply_draft or '' }}</textarea>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <button class="btn btn-sm btn-warning rv-post" data-id="{{ r.id }}"><i class="bi bi-send me-1"></i>Post to Google</button>
+      <input class="form-control form-control-sm bg-dark text-light border-secondary" style="max-width: 320px;" id="rv-guide-{{ r.id }}" placeholder="Optional: guidance for a new draft (e.g. mention Dany)">
+      <button class="btn btn-sm btn-outline-warning rv-redraft" data-id="{{ r.id }}"><i class="bi bi-magic me-1"></i>Redraft</button>
+      <button class="btn btn-sm btn-outline-secondary rv-skip" data-id="{{ r.id }}">Skip</button>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% if done %}
+<h6 class="text-uppercase text-muted small fw-bold mt-4 mb-2">Replied and skipped ({{ done|length }})</h6>
+<div class="table-responsive">
+  <table class="table table-dark table-sm small align-middle">
+    <thead><tr><th>Review</th><th>Reply</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for r in done %}
+      <tr>
+        <td style="min-width: 260px;">{{ stars(r.stars) }} <strong>{{ r.reviewer }}</strong> <span class="text-muted">· {{ locations.get(r.location) }} · {{ r.review_time.strftime('%b %-d, %Y') if r.review_time }}</span>
+          <div class="text-muted">{{ (r.comment or '(no text)')|truncate(160) }}</div></td>
+        <td class="rv-reply text-muted" style="min-width: 260px;">{{ r.google_reply or '—' }}</td>
+        <td>{% if r.status == 'posted' %}<span class="badge bg-success">Posted {{ r.posted_at.strftime('%b %-d') }}</span>
+            {% elif r.status == 'replied' %}<span class="badge bg-secondary">Replied on Google</span>
+            {% else %}<span class="badge bg-dark border border-secondary">Skipped</span>{% endif %}</td>
+        <td>{% if r.status == 'skipped' %}<button class="btn btn-sm btn-outline-secondary rv-skip" data-id="{{ r.id }}">Undo</button>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<script>
+function post(url, body) {
+  return fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})})
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'failed'); return j; }); });
+}
+document.getElementById('rv-sync').addEventListener('click', function () {
+  var b = this; b.disabled = true; b.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Checking and drafting…';
+  post('/api/reviews/sync').then(function () { setTimeout(function () { location.reload(); }, 45000); });
+});
+document.querySelectorAll('.rv-post').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var text = document.getElementById('rv-text-' + b.dataset.id).value.trim();
+    if (!text) return alert('The reply is empty.');
+    if (!confirm('Post this reply publicly on Google?\n\n' + text)) return;
+    b.disabled = true;
+    post('/api/reviews/' + b.dataset.id + '/post', {reply: text}).then(function () { location.reload(); })
+      .catch(function (e) { b.disabled = false; alert(e.message); });
+  });
+});
+document.querySelectorAll('.rv-redraft').forEach(function (b) {
+  b.addEventListener('click', function () {
+    b.disabled = true;
+    post('/api/reviews/' + b.dataset.id + '/redraft', {guidance: document.getElementById('rv-guide-' + b.dataset.id).value})
+      .then(function (j) {
+        document.getElementById('rv-text-' + b.dataset.id).value = j.reply; b.disabled = false;
+        var w = document.getElementById('rv-warn-' + b.dataset.id); w.textContent = j.warning || ''; w.classList.toggle('d-none', !j.warning);
+      })
+      .catch(function (e) { b.disabled = false; alert(e.message); });
+  });
+});
+document.querySelectorAll('.rv-skip').forEach(function (b) {
+  b.addEventListener('click', function () { post('/api/reviews/' + b.dataset.id + '/skip').then(function () { location.reload(); }); });
+});
+</script>
+{% endblock %}

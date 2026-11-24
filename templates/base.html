@@ -44,6 +44,11 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="nav-link {% if request.path == '/reviews' %}active text-warning{% endif %}" href="/reviews">
+            <i class="bi bi-star-half me-1"></i>Reviews
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link {% if request.path == '/opportunities' %}active text-warning{% endif %}" href="/opportunities">
             <i class="bi bi-compass me-1"></i>Opportunities
           </a>
