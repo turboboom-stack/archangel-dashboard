@@ -74,7 +74,7 @@ def _fetch(loc_id):
 
 
 SENSITIVE = re.compile(r"\b(famil(y|ies)|parents?|mom|dad|mother|father|wife|husband|spouse|brother|sister|sons?|"
-                       r"daughters?|children|kids|wills?|estates?|probate|documents?|invoices?|bill(ing)?|case|"
+                       r"daughters?|children|kids|wills|estates?|probate|documents?|invoices?|bill(ing)?|case|"
                        r"a trust|your trust|the trust|trusts)\b", re.I)
 
 
